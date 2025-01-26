@@ -9,7 +9,7 @@ add_executable(${PROJECT_NAME} ${APP_SRC_FILES})
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC raylib imgui MathLib)
+target_link_libraries(${PROJECT_NAME} raylib imgui MathLib)
 
 target_precompile_headers(${PROJECT_NAME} REUSE_FROM MathLib)
 
