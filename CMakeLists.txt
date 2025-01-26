@@ -9,4 +9,5 @@ add_subdirectory(Libraries)
 add_subdirectory(MathLib)
 add_subdirectory(Application)
 
+include(CTest)
 add_subdirectory(Tests)
