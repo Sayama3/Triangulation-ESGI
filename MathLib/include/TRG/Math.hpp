@@ -163,10 +163,10 @@ namespace TRG::Math {
 		return Cross(AB,AC);
 	}
 
-	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& AB, const glm::vec<3,T,Q>& AC, const glm::vec<3,T,Q>& normal) {
-		return Dot(Cross(AB, AC), normal) > 0;
-	}
+	// template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	// inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& AB, const glm::vec<3,T,Q>& AC, const glm::vec<3,T,Q>& normal) {
+	// 	return Dot(Cross(AB, AC), normal) > 0;
+	// }
 
 	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static bool IsTriangleOriented(const glm::vec<2,T,Q>& AB, const glm::vec<2,T,Q>& AC) {
@@ -176,12 +176,12 @@ namespace TRG::Math {
 		}) > 0;
 	}
 
-	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c, const glm::vec<3,T,Q>& normal) {
-		const auto AB = b - a;
-		const auto AC = c - a;
-		return IsTriangleOriented(AB, AC, normal);
-	}
+	// template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	// inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c, const glm::vec<3,T,Q>& normal) {
+	// 	const auto AB = b - a;
+	// 	const auto AC = c - a;
+	// 	return IsTriangleOriented(AB, AC, normal);
+	// }
 
 	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static bool IsTriangleOriented(const glm::vec<2,T,Q>& a, const glm::vec<2,T,Q>& b, const glm::vec<2,T,Q>& c) {
@@ -208,23 +208,23 @@ namespace TRG::Math {
 		}
 	}
 
-	/**
-	 * Calculate the signed angle in radians between the vector 1 & 2.
-	 * @tparam T Type of the vector
-	 * @tparam Q Alignment of the vector.
-	 * @param x Vector 1.
-	 * @param y Vector 2.
-	 * @return Signed angle in radians between 0 & 2*PI.
-	 */
-	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	inline static T SignedAngle(glm::vec<3,T,Q> x, glm::vec<3,T,Q> y,  const glm::vec<3,T,Q>& normal) {
-		const auto angle = Angle(x,y);
-		if (IsTriangleOriented(x,y, normal)) {
-			return angle;
-		} else {
-			return static_cast<T>(2*pi) - angle;
-		}
-	}
+	// /**
+	//  * Calculate the signed angle in radians between the vector 1 & 2.
+	//  * @tparam T Type of the vector
+	//  * @tparam Q Alignment of the vector.
+	//  * @param x Vector 1.
+	//  * @param y Vector 2.
+	//  * @return Signed angle in radians between 0 & 2*PI.
+	//  */
+	// template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	// inline static T SignedAngle(glm::vec<3,T,Q> x, glm::vec<3,T,Q> y,  const glm::vec<3,T,Q>& normal) {
+	// 	const auto angle = Angle(x,y);
+	// 	if (IsTriangleOriented(x,y, normal)) {
+	// 		return angle;
+	// 	} else {
+	// 		return static_cast<T>(2*pi) - angle;
+	// 	}
+	// }
 
 	template<class fwd_iterator, glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static glm::vec<L,T,Q> CalculateCenter(const fwd_iterator begin, const fwd_iterator end) {

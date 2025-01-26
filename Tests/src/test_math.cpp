@@ -74,12 +74,12 @@ TEST(MathTest, BasicVectorTests) {
 	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec2{0,1}, Vec2(1,1)) * rad2deg, 315_r);
 	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec2{0,1}, Vec2(-1,1)) * rad2deg, 45_r);
 
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,1,0}, Vec3(1,1,0), {0,0,1}) * rad2deg, 315_r);
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,1,0}, Vec3(-1,1,0), {0,0,1}) * rad2deg, 45_r);
-
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(1,0,1), {0,-1,0}) * rad2deg, 315_r);
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(-1,0,1), {0,-1,0}) * rad2deg, 45_r);
-
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(0,1,1),{1,0,0}) * rad2deg, 315_r);
-	EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(0,-1,1),{1,0,0}) * rad2deg, 45_r);
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,1,0}, Vec3(1,1,0), {0,0,1}) * rad2deg, 315_r);
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,1,0}, Vec3(-1,1,0), {0,0,1}) * rad2deg, 45_r);
+	//
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(1,0,1), {0,-1,0}) * rad2deg, 315_r);
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(-1,0,1), {0,-1,0}) * rad2deg, 45_r);
+	//
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(0,1,1),{1,0,0}) * rad2deg, 315_r);
+	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(0,-1,1),{1,0,0}) * rad2deg, 45_r);
 }
