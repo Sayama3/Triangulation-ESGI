@@ -37,9 +37,9 @@ jobs:
         path: |
           ${{github.workspace}}/build/.cmake
           ${{github.workspace}}/build/_deps
-        key: ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-${{ matrix.compiler }}-${{ env.BUILD_TYPE }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-
+          ${{ runner.os }}-${{ matrix.compiler }}-
 
       # Setup ubuntu
     - name: Fetch all apt libraries
