@@ -42,8 +42,7 @@ jobs:
           ${{github.workspace}}/build/_deps
         key: ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.BUILD_TYPE }}-
-          ${{ runner.os }}-
+          ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-
 
       # Setup ubuntu
     - name: Fetch all apt libraries
