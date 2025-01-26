@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(APP_SRC_FILES
-	src/main.cpp
+		src/main.cpp
+		src/Application.cpp
+		include/Application.hpp
 )
 
 add_executable(${PROJECT_NAME} ${APP_SRC_FILES})
