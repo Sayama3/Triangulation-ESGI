@@ -3,6 +3,7 @@
 //
 
 #pragma once
+
 #ifndef GLM_ENABLE_EXPERIMENTAL
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
@@ -19,6 +20,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 #define TRG_SQR(a) (a * a)
+#define GLM_VEC_T(L,T,Q) glm::vec<L,T,Q>
 
 namespace TRG::Math {
 
@@ -71,10 +73,21 @@ namespace TRG::Math {
 	typedef glm::mat<2, 2, Real> Mat2x2; typedef Mat2x2 Mat2;
 	typedef glm::mat<3, 2, Real> Mat3x2;
 
+	inline static constexpr Real tau {6.28318530717958647692};
+	inline static constexpr Real pi  {3.14159265358979323846};
+	inline static constexpr Real phi {1.61803398874989484820};
+	inline static constexpr Real deg2rad {pi / static_cast<Real>(180)};
+	inline static constexpr Real rad2deg {static_cast<Real>(180) / pi};
+
 	namespace Literal
 	{
 		constexpr Real operator ""_r(const unsigned long long int value) {return static_cast<Real>(value);}
 		constexpr Real operator ""_r(const long double value) {return static_cast<Real>(value);}
+	}
+
+	template<typename T>
+	inline static T Sign(T value) {
+		return value < static_cast<T>(0) ? static_cast<T>(-1) : static_cast<T>(1);
 	}
 
 	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
@@ -92,8 +105,24 @@ namespace TRG::Math {
 		return glm::dot(x,y);
 	}
 
+	/**
+	 * Calculate the angle in radians between the vector 1 & 2.
+	 * @tparam L Length of the vector.
+	 * @tparam T Type of the vector
+	 * @tparam Q Alignment of the vector.
+	 * @param x Vector 1.
+	 * @param y Vector 2.
+	 * @return Angle in radians between the vector 1 & 2.
+	 */
+	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T Angle(glm::vec<L,T,Q> x, glm::vec<L,T,Q> y) {
+		x = glm::normalize(x);
+		y = glm::normalize(y);
+		return glm::acos(Dot(x,y));
+	}
+
 	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	inline static T Cross(const glm::vec<3,T,Q>& x, const glm::vec<3,T,Q>& y) {
+	inline static glm::vec<3,T,Q> Cross(const glm::vec<3,T,Q>& x, const glm::vec<3,T,Q>& y) {
 		return glm::cross(x,y);
 	}
 
@@ -107,6 +136,96 @@ namespace TRG::Math {
 		return glm::length(x);
 	}
 
+	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static GLM_VEC_T(L,T,Q) Normalize(const glm::vec<L,T,Q>& x) {
+		return glm::normalize(x);
+	}
+
+	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static void NormalizeInPlace(glm::vec<L,T,Q>& x) {
+		const T len = Magnitude(x);
+		x /= len;
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static GLM_VEC_T(3,T,Q) CalculateTriangleNormal(const GLM_VEC_T(3,T,Q)& a, const GLM_VEC_T(3,T,Q)& b, const GLM_VEC_T(3,T,Q)& c) {
+		const GLM_VEC_T(3,T,Q) AB = b - a;
+		const GLM_VEC_T(3,T,Q) AC = c - a;
+
+		return Normalize(Cross(AB,AC));
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static GLM_VEC_T(3,T,Q) CalculateTriangleNormalNonNormalized(const GLM_VEC_T(3,T,Q)& a, const GLM_VEC_T(3,T,Q)& b, const GLM_VEC_T(3,T,Q)& c) {
+		const GLM_VEC_T(3,T,Q) AB = b - a;
+		const GLM_VEC_T(3,T,Q) AC = c - a;
+
+		return Cross(AB,AC);
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& AB, const glm::vec<3,T,Q>& AC, const glm::vec<3,T,Q>& normal) {
+		return Dot(Cross(AB, AC), normal) > 0;
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static bool IsTriangleOriented(const glm::vec<2,T,Q>& AB, const glm::vec<2,T,Q>& AC) {
+		return Determinant(glm::mat<2,2,T,Q>{
+			AB,
+			AC,
+		}) > 0;
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static bool IsTriangleOriented(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c, const glm::vec<3,T,Q>& normal) {
+		const auto AB = b - a;
+		const auto AC = c - a;
+		return IsTriangleOriented(AB, AC, normal);
+	}
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static bool IsTriangleOriented(const glm::vec<2,T,Q>& a, const glm::vec<2,T,Q>& b, const glm::vec<2,T,Q>& c) {
+		const auto AB = b - a;
+		const auto AC = c - a;
+		return IsTriangleOriented(AB, AC);
+	}
+
+	/**
+	 * Calculate the signed angle in radians between the vector 1 & 2.
+	 * @tparam T Type of the vector
+	 * @tparam Q Alignment of the vector.
+	 * @param x Vector 1.
+	 * @param y Vector 2.
+	 * @return Signed angle in radians between 0 & 2*PI.
+	 */
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T SignedAngle(glm::vec<2,T,Q> x, glm::vec<2,T,Q> y) {
+		const auto angle = Angle(x,y);
+		if (IsTriangleOriented(x,y)) {
+			return angle;
+		} else {
+			return static_cast<T>(2*pi) - angle;
+		}
+	}
+
+	/**
+	 * Calculate the signed angle in radians between the vector 1 & 2.
+	 * @tparam T Type of the vector
+	 * @tparam Q Alignment of the vector.
+	 * @param x Vector 1.
+	 * @param y Vector 2.
+	 * @return Signed angle in radians between 0 & 2*PI.
+	 */
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T SignedAngle(glm::vec<3,T,Q> x, glm::vec<3,T,Q> y,  const glm::vec<3,T,Q>& normal) {
+		const auto angle = Angle(x,y);
+		if (IsTriangleOriented(x,y, normal)) {
+			return angle;
+		} else {
+			return static_cast<T>(2*pi) - angle;
+		}
+	}
+
 	template<class fwd_iterator, glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static glm::vec<L,T,Q> CalculateCenter(const fwd_iterator begin, const fwd_iterator end) {
 		glm::vec<L,T,Q> center{static_cast<T>(0)};
@@ -117,6 +236,23 @@ namespace TRG::Math {
 		}
 		center /= static_cast<T>(count);
 		return center;
+	}
+
+	template<class fwd_iterator, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::vec<3,T,Q> CalculateSurfaceNormal(const fwd_iterator begin, const fwd_iterator end) {
+		glm::vec<3,T,Q> normal{static_cast<T>(0)};
+		for (auto it = begin; it != end; ++it) {
+			glm::vec<3,T,Q> next;
+			auto nextIt = it; ++nextIt;
+			if (nextIt == end) next = *begin;
+			else next = *nextIt;
+			const glm::vec<3,T,Q> current = *it;
+
+			normal.x += (current.y - nextIt.y) * (current.z + next.z);
+			normal.y += (current.z - nextIt.z) * (current.x + next.x);
+			normal.z += (current.x - nextIt.x) * (current.y + next.y);
+		}
+		return Normalize(normal);
 	}
 
 } // TRG
