@@ -34,15 +34,15 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          ${{github.workspace}}/build/.cmake
-          ${{github.workspace}}/build/_deps
-        key: ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ env.BUILD_TYPE }}-
+#    - name: Cache
+#      uses: actions/cache@v4
+#      with:
+#        path: |
+#          ${{github.workspace}}/build/.cmake
+#          ${{github.workspace}}/build/_deps
+#        key: ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ matrix.compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
+#        restore-keys: |
+#          ${{ runner.os }}-${{ env.BUILD_TYPE }}-
 
       # Setup ubuntu
     - name: Fetch all apt libraries
