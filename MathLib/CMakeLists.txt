@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.16)
 set(TRG_SRC_FILES
 		include/TRG/Math.hpp
 		src/Math.cpp
+		include/TRG/Math/Raycast.hpp
+		include/TRG/Math/Basics.hpp
+		include/TRG/Math/Geometry.hpp
+		include/TRG/Math/Types.hpp
 )
 
 add_library(MathLib STATIC ${TRG_SRC_FILES})
