@@ -35,6 +35,7 @@ namespace TRG::Application {
 	void Scene::Init() {
 		m_Camera.InternalCamera.Position = {0,2,0};
 		m_Camera.InternalCamera.Rotation = Math::MakeQuat(45*deg2rad, {1,0,0});
+		m_2DPoints.reserve(1000);
 	}
 
 	void Scene::Update(const float ts) {
@@ -74,6 +75,14 @@ namespace TRG::Application {
 	}
 
 	void Scene::Render(const float ts) {
+		constexpr auto color = Color{ 50, 180, 40, 255};
+		for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
+			const auto& current = m_2DPoints[i];
+			const auto& next = m_2DPoints[(i + 1) % m_2DPoints.size()];
+			DrawSphere(Vector3(current.x, 0, current.y), 0.1, color);
+			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), color);
+		}
+
 		if (m_Action == Action::AddPoint && PointToAdd.has_value()) {
 			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{180, 50, 40, 150});
 			TraceLog(TraceLogLevel::LOG_INFO, "Position (%f, %f, %f)", PointToAdd.value().x, PointToAdd.value().y, PointToAdd.value().z);
@@ -83,6 +92,52 @@ namespace TRG::Application {
 
 	void Scene::RenderGui(const float ts) {
 
+	}
+
+	void Scene::RenderImGui(const float ts) {
+		RenderImGuiPoints();
+		RenderImGuiCamera();
+		RenderImGuiCameraInputs();
+	}
+	void Scene::RenderImGuiPoints() {
+		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
+		std::vector<uint64_t> toDelete;
+		ImGui::Begin("Points");
+		{
+			if (ImGui::Button("Delete All")) {
+				m_2DPoints.clear();
+			}
+			ImGui::SameLine(0, 1);
+			if (ImGui::Button("Sort")) {
+				const Vec2 center = Math::CalculateCenter<std::vector<Vec2>::iterator, 2>(m_2DPoints.begin(), m_2DPoints.end());
+				std::sort(m_2DPoints.begin(), m_2DPoints.end(), [center](const Vec2& a, const Vec2& b) {
+					const auto cToA = a - center;
+					const auto cToB = b - center;
+					const auto angleA = Math::SignedAngle({1,0}, cToA);
+					const auto angleB = Math::SignedAngle({1,0}, cToB);
+					if (angleA == angleB) {
+						return Math::Magnitude(cToA) < Math::Magnitude(cToB);
+					}
+					return angleA < angleB;
+				});
+			}
+
+			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
+				ImGui::PushID(i);
+				std::string name = "Point " + std::to_string(i);
+				ImGuiLib::DragReal2(name.c_str(), &m_2DPoints[i].x, 0.01, 0,0, "%.2f");
+				ImGui::SameLine();
+				if (ImGui::Button("Delete")) {
+					toDelete.push_back(i);
+				}
+				ImGui::PopID();
+			}
+		}
+		ImGui::End();
+
+		for (const auto to_delete: toDelete) {
+			m_2DPoints.erase(m_2DPoints.begin() + to_delete);
+		}
 	}
 
 	void Scene::RenderImGuiCamera() {
@@ -128,12 +183,6 @@ namespace TRG::Application {
 			}
 			ImGui::End();
 		}
-	}
-
-	void Scene::RenderImGui(const float ts) {
-
-		RenderImGuiCamera();
-		RenderImGuiCameraInputs();
 	}
 
 	Camera3D Scene::GetCamera3D() const {
@@ -256,7 +305,8 @@ namespace TRG::Application {
 	}
 
 	void Scene::EndAddPoint(float ts) {
-		PointToAdd.reset();
+		if (!PointToAdd) return;
+		m_2DPoints.push_back(Vec2{PointToAdd.value().x, PointToAdd.value().z});
 	}
 
 	void Scene::UpdatePointToAdd() {

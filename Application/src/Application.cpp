@@ -51,13 +51,7 @@ namespace TRG::Application {
 				ClearBackground(GetColor(0x052c46ff));
 				BeginMode3D(m_Scene.GetCamera3D());
 				{
-#ifdef TRG_DEBUG
 					DrawGrid(20, 1);
-#endif
-					DrawSphere(Vector3(0,0,0), 0.2, Color(255,255,255,255));
-					DrawSphere(Vector3(1,0,0), 0.2, Color(255,0, 0,255));
-					DrawSphere(Vector3(0,1,0), 0.2, Color(0,255,0,255));
-					DrawSphere(Vector3(0,0,1), 0.2, Color(0,0,255,255));
 					RenderScene(ts);
 				}
 				EndMode3D();

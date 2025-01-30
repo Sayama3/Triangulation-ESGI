@@ -34,8 +34,8 @@ namespace TRG::Application {
 		void Render(float ts) override;
 		void RenderGui(float ts) override;
 
+		void RenderImGuiPoints();
 		void RenderImGuiCamera();
-
 		void RenderImGuiCameraInputs();
 
 		void RenderImGui(float ts) override;
@@ -67,6 +67,8 @@ namespace TRG::Application {
 
 		void UpdatePointToAdd();
 	private:
+		std::vector<Vec2> m_2DPoints;
+
 		EditorCamera m_Camera;
 		Mat4 InvViewProjMatrix;
 		Real m_ScreenWidth;
