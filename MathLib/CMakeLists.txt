@@ -49,6 +49,7 @@ target_precompile_headers(MathLib PUBLIC
 		# Containers
 		<array>
 		<vector>
+		<list>
 		<unordered_set>
 		<set>
 		<unordered_map>
