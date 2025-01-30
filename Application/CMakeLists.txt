@@ -4,6 +4,10 @@ set(APP_SRC_FILES
 		src/main.cpp
 		src/Application.cpp
 		include/Application.hpp
+		src/Scene.cpp
+		include/Scene.hpp
+		include/Render/Renderable.hpp
+		include/Core/Singleton.hpp
 )
 
 add_executable(${PROJECT_NAME} ${APP_SRC_FILES})

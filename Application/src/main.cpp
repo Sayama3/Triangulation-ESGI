@@ -3,11 +3,12 @@
 //
 
 #include "Application.hpp"
+#include "Core/Singleton.hpp"
 
 int main(void)
 {
-
-	auto* app = new TRG::Application::Application(800, 450, "Application");
-	app->Run();
-	delete app;
+	using SingletonApp = TRG::Application::Singleton<TRG::Application::Application>;
+	SingletonApp::Register(800, 450, "Application");
+	SingletonApp::Get().Run();
+	SingletonApp::Unregister();
 }

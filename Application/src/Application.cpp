@@ -12,10 +12,11 @@
 using namespace TRG::Math::Literal;
 
 namespace TRG::Application {
-	Application::Application(int width, int height, const std::string &name) {
+	Application::Application(int width, int height, const std::string &name): m_Width(width), m_Height(height) {
 		SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Window configuration flags
 		InitWindow(width, height, name.c_str());
 		rlImGuiSetup(true); // sets up ImGui with either a dark or light default theme
+		m_Scene.Init();
 	}
 
 	Application::~Application() {
@@ -23,78 +24,69 @@ namespace TRG::Application {
 		CloseWindow(); // Close window and OpenGL context
 	}
 
-	void Application::Run() {
-		// NOTE: Be careful, background width must be equal or bigger than screen width
-		// if not, texture should be draw more than two times for scrolling effect
-		Texture2D background = LoadTexture("Assets/cyberpunk_street_background.png");
-		Texture2D midground = LoadTexture("Assets/cyberpunk_street_midground.png");
-		Texture2D foreground = LoadTexture("Assets/cyberpunk_street_foreground.png");
+	Application::Application(Application && other) noexcept {
+		swap(other);
+	}
 
-		float scrollingBack = 0.0f;
-		float scrollingMid = 0.0f;
-		float scrollingFore = 0.0f;
+	Application & Application::operator=(Application && other) noexcept {
+		swap(other);
+		return *this;
+	}
+
+	void Application::Run() {
 
 		SetTargetFPS(60); // Set our game to run at 60 frames-per-second
 		//--------------------------------------------------------------------------------------
 		while (!WindowShouldClose()) // Detect window close button or ESC key
 		{
 			m_Width = GetScreenWidth();
-			m_Heigh = GetScreenHeight();
+			m_Height = GetScreenHeight();
+			m_Scene.SetWindow(m_Width, m_Height);
 
-			// Update
-			//----------------------------------------------------------------------------------
-			scrollingBack -= 0.1f;
-			scrollingMid -= 0.5f;
-			scrollingFore -= 1.0f;
+			const float ts = GetFrameTime();
 
-			// NOTE: Texture is scaled twice its size, so it sould be considered on scrolling
-			if (scrollingBack <= -background.width * 2) scrollingBack = 0;
-			if (scrollingMid <= -midground.width * 2) scrollingMid = 0;
-			if (scrollingFore <= -foreground.width * 2) scrollingFore = 0;
-			//----------------------------------------------------------------------------------
+			Update(ts);
 
-			// Draw
-			//----------------------------------------------------------------------------------
 			BeginDrawing();
-
 			{
 				ClearBackground(GetColor(0x052c46ff));
+				// BeginMode3D(m_Scene.GetCamera3D());
+				{
+					RenderScene(ts);
+				}
+				// EndMode3D();
 
-				// Draw background image twice
-				// NOTE: Texture is scaled twice its size
-				DrawTextureEx(background, Vector2{scrollingBack, 20}, 0.0f, 2.0f, WHITE);
-				DrawTextureEx(background, Vector2{background.width * 2 + scrollingBack, 20}, 0.0f, 2.0f, WHITE);
-
-				// Draw midground image twice
-				DrawTextureEx(midground, Vector2{scrollingMid, 20}, 0.0f, 2.0f, WHITE);
-				DrawTextureEx(midground, Vector2{midground.width * 2 + scrollingMid, 20}, 0.0f, 2.0f, WHITE);
-
-				// Draw foreground image twice
-				DrawTextureEx(foreground, Vector2{scrollingFore, 70}, 0.0f, 2.0f, WHITE);
-				DrawTextureEx(foreground, Vector2{foreground.width * 2 + scrollingFore, 70}, 0.0f, 2.0f, WHITE);
-
-				DrawText("BACKGROUND SCROLLING & PARALLAX", 10, 10, 20, RED);
-				DrawText("(c) Cyberpunk Street Environment by Luis Zuno (@ansimuz)", m_Width - 330, m_Heigh - 20, 10,
-				         RAYWHITE);
-
+				RenderGui(ts);
 
 				rlImGuiBegin(); // starts the ImGui content mode. Make all ImGui calls after this
 				{
-					static bool showDemo = true;
-					if (showDemo) ImGui::ShowDemoWindow(&showDemo);
+					RenderImGui(ts);
 				}
-				rlImGuiEnd(); // ends the ImGui content mode. Make all ImGui calls before this}
+				rlImGuiEnd(); // ends the ImGui content mode. Make all ImGui calls before this
 			}
-
 			EndDrawing();
-			//----------------------------------------------------------------------------------
 		}
+	}
 
+	void Application::Update(const float ts) {
+		m_Scene.Update(ts);
+	}
 
-		// De-Initialization
-		//--------------------------------------------------------------------------------------
-		UnloadTexture(background); // Unload background texture
-		UnloadTexture(midground); // Unload midground texture
-		UnloadTexture(foreground); // Unload foreground texture
+	void Application::RenderScene(const float ts) {
+		m_Scene.Render(ts);
+	}
+
+	void Application::RenderGui(const float ts) {
+		m_Scene.RenderGui(ts);
+	}
+
+	void Application::RenderImGui(const float ts) {
+		m_Scene.RenderImGui(ts);
+	}
+
+	void Application::swap(Application &application) noexcept {
+		std::swap(m_Width, application.m_Width);
+		std::swap(m_Height, application.m_Height);
+		std::swap(m_Scene, application.m_Scene);
 	}
 } // TRG::Application
