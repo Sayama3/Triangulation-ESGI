@@ -8,7 +8,7 @@
 int main(void)
 {
 	using SingletonApp = TRG::Application::Singleton<TRG::Application::Application>;
-	SingletonApp::Register(800, 450, "Application");
+	SingletonApp::Register(1600, 900, "Application");
 	SingletonApp::Get().Run();
 	SingletonApp::Unregister();
 }

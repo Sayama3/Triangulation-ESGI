@@ -5,12 +5,13 @@
 #pragma once
 
 #include "Render/Renderable.hpp"
-
+#include "Render/EditorCamera.hpp"
 #include <raylib.h>
+
 
 namespace TRG::Application {
 
-	class Scene : public Renderable {
+	class Scene final : public Renderable {
 	public:
 		Scene();
 		~Scene() override;
@@ -26,25 +27,37 @@ namespace TRG::Application {
 		void Update(float ts) override;
 		void Render(float ts) override;
 		void RenderGui(float ts) override;
+
+		void RenderImGuiCamera();
+
+		void RenderImGuiCameraInputs();
+
 		void RenderImGui(float ts) override;
-		Camera3D GetCamera3D() const;
-	public:
-		void SetWindow(uint32_t width, uint32_t height);
+		[[nodiscard]] Camera3D GetCamera3D() const;
 	public:
 		void swap(Scene& other) noexcept;
+
 	private:
-		// NOTE: Be careful, background width must be equal or bigger than screen width
-		// if not, texture should be draw more than two times for scrolling effect
-		Texture2D background;
-		Texture2D midground;
-		Texture2D foreground;
-
-		uint32_t m_Width;
-		uint32_t m_Height;
-
-		float scrollingBack = 0.0f;
-		float scrollingMid = 0.0f;
-		float scrollingFore = 0.0f;
+		[[nodiscard]] Vec3 GetKeyboardMovement();
+		[[nodiscard]] Vec2 GetKeyboardRotation();
+		[[nodiscard]] Vec2 GetMouseRotation();
+	private:
+		EditorCamera m_Camera;
+	public:
+		MouseButton m_EnterFpsKey = MOUSE_BUTTON_RIGHT;
+		KeyboardKey m_ForwardKey = KeyboardKey::KEY_W;
+		KeyboardKey m_BackwardKey = KeyboardKey::KEY_S;
+		KeyboardKey m_RightKey = KeyboardKey::KEY_A;
+		KeyboardKey m_LeftKey = KeyboardKey::KEY_D;
+		KeyboardKey m_UpKey = KeyboardKey::KEY_E;
+		KeyboardKey m_DownKey = KeyboardKey::KEY_Q;
+		KeyboardKey m_RotateRightKey = KeyboardKey::KEY_RIGHT;
+		KeyboardKey m_RotateLeftKey = KeyboardKey::KEY_LEFT;
+		KeyboardKey m_RotateUpKey = KeyboardKey::KEY_UP;
+		KeyboardKey m_RotateDownKey = KeyboardKey::KEY_DOWN;
+	private:
+		bool m_IsInFps = false;
+		bool m_EditInputs = false;
 	};
 
 } // TRG::Application

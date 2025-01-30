@@ -9,7 +9,7 @@
 #include <imgui.h>
 #include <rlImGui.h>
 
-using namespace TRG::Math::Literal;
+using namespace TRG::Literal;
 
 namespace TRG::Application {
 	Application::Application(int width, int height, const std::string &name): m_Width(width), m_Height(height) {
@@ -41,7 +41,6 @@ namespace TRG::Application {
 		{
 			m_Width = GetScreenWidth();
 			m_Height = GetScreenHeight();
-			m_Scene.SetWindow(m_Width, m_Height);
 
 			const float ts = GetFrameTime();
 
@@ -50,16 +49,22 @@ namespace TRG::Application {
 			BeginDrawing();
 			{
 				ClearBackground(GetColor(0x052c46ff));
-				// BeginMode3D(m_Scene.GetCamera3D());
+				BeginMode3D(m_Scene.GetCamera3D());
 				{
+#ifdef TRG_DEBUG
+					DrawGrid(20, 1);
+#endif
 					RenderScene(ts);
 				}
-				// EndMode3D();
+				EndMode3D();
 
 				RenderGui(ts);
 
 				rlImGuiBegin(); // starts the ImGui content mode. Make all ImGui calls after this
 				{
+					static bool showDemo = true;
+					if (showDemo) ImGui::ShowDemoWindow(&showDemo);
+
 					RenderImGui(ts);
 				}
 				rlImGuiEnd(); // ends the ImGui content mode. Make all ImGui calls before this

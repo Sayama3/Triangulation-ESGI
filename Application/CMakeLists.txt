@@ -8,6 +8,11 @@ set(APP_SRC_FILES
 		include/Scene.hpp
 		include/Render/Renderable.hpp
 		include/Core/Singleton.hpp
+		src/Render/Camera.cpp
+		include/Render/Camera.hpp
+		src/Render/EditorCamera.cpp
+		include/Render/EditorCamera.hpp
+		src/ImGuiLib_RaylibInputs.cpp
 )
 
 add_executable(${PROJECT_NAME} ${APP_SRC_FILES})

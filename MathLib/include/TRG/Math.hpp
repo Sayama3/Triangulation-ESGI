@@ -22,8 +22,6 @@
 #define TRG_SQR(a) (a * a)
 #define GLM_VEC_T(L,T,Q) glm::vec<L,T,Q>
 
-namespace TRG::Math {
-
 #ifdef TRG_DOUBLE
 	#define REAL_DECIMAL_DIG	DBL_DECIMAL_DIG		// # of decimal digits of rounding precision
 	#define REAL_DIG			DBL_DIG				// # of decimal digits of precision
@@ -41,26 +39,33 @@ namespace TRG::Math {
 	#define REAL_RADIX			DBL_RADIX			// exponent radix
 	#define REAL_TRUE_MIN		DBL_TRUE_MIN		// min positive value
 
+namespace TRG {
 	using Real = double;
+}
 #else
-	#define REAL_DECIMAL_DIG	FLT_DECIMAL_DIG		// # of decimal digits of rounding precision
-	#define REAL_DIG			FLT_DIG				// # of decimal digits of precision
-	#define REAL_EPSILON		FLT_EPSILON			// smallest such that 1.0+FLT_EPSILON != 1.0
-	#define REAL_HAS_SUBNORM	FLT_HAS_SUBNORM		// type does support subnormal numbers
-	#define REAL_GUARD			FLT_GUARD
-	#define REAL_MANT_DIG		FLT_MANT_DIG		// # of bits in mantissa
-	#define REAL_MAX			FLT_MAX				// max value
-	#define REAL_MAX_10_EXP		FLT_MAX_10_EXP		// max decimal exponent
-	#define REAL_MAX_EXP		FLT_MAX_EXP			// max binary exponent
-	#define REAL_MIN			FLT_MIN				// min normalized positive value
-	#define REAL_MIN_10_EXP		FLT_MIN_10_EXP		// min decimal exponent
-	#define REAL_MIN_EXP		FLT_MIN_EXP			// min binary exponent
-	#define REAL_NORMALIZE		FLT_NORMALIZE
-	#define REAL_RADIX			FLT_RADIX			// exponent radix
-	#define REAL_TRUE_MIN		FLT_TRUE_MIN		// min positive value
+#define REAL_DECIMAL_DIG	FLT_DECIMAL_DIG		// # of decimal digits of rounding precision
+#define REAL_DIG			FLT_DIG				// # of decimal digits of precision
+#define REAL_EPSILON		FLT_EPSILON			// smallest such that 1.0+FLT_EPSILON != 1.0
+#define REAL_HAS_SUBNORM	FLT_HAS_SUBNORM		// type does support subnormal numbers
+#define REAL_GUARD			FLT_GUARD
+#define REAL_MANT_DIG		FLT_MANT_DIG		// # of bits in mantissa
+#define REAL_MAX			FLT_MAX				// max value
+#define REAL_MAX_10_EXP		FLT_MAX_10_EXP		// max decimal exponent
+#define REAL_MAX_EXP		FLT_MAX_EXP			// max binary exponent
+#define REAL_MIN			FLT_MIN				// min normalized positive value
+#define REAL_MIN_10_EXP		FLT_MIN_10_EXP		// min decimal exponent
+#define REAL_MIN_EXP		FLT_MIN_EXP			// min binary exponent
+#define REAL_NORMALIZE		FLT_NORMALIZE
+#define REAL_RADIX			FLT_RADIX			// exponent radix
+#define REAL_TRUE_MIN		FLT_TRUE_MIN		// min positive value
 
+namespace TRG {
 	using Real = float;
+}
 #endif
+
+
+namespace TRG {
 
 	typedef glm::qua<Real> Quat;
 	typedef glm::vec<4, Real> Vec4;
@@ -85,6 +90,13 @@ namespace TRG::Math {
 		constexpr Real operator ""_r(const long double value) {return static_cast<Real>(value);}
 	}
 
+}
+
+namespace TRG::Math {
+	template<typename T>
+	inline static constexpr T Identity() {
+		return glm::identity<T>();
+	}
 	template<typename T>
 	inline static T Sign(T value) {
 		return value < static_cast<T>(0) ? static_cast<T>(-1) : static_cast<T>(1);
@@ -136,6 +148,16 @@ namespace TRG::Math {
 		return glm::length(x);
 	}
 
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T Magnitude2(const glm::qua<T,Q>& x) {
+		return glm::length2(x);
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T Magnitude(const glm::qua<T,Q>& x) {
+		return glm::length(x);
+	}
+
 	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static GLM_VEC_T(L,T,Q) Normalize(const glm::vec<L,T,Q>& x) {
 		return glm::normalize(x);
@@ -143,6 +165,17 @@ namespace TRG::Math {
 
 	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static void NormalizeInPlace(glm::vec<L,T,Q>& x) {
+		const T len = Magnitude(x);
+		x /= len;
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::qua<T,Q> Normalize(const glm::qua<T,Q>& x) {
+		return glm::normalize(x);
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static void NormalizeInPlace(glm::qua<T,Q>& x) {
 		const T len = Magnitude(x);
 		x /= len;
 	}
@@ -253,6 +286,17 @@ namespace TRG::Math {
 			normal.z += (current.x - nextIt.x) * (current.y + next.y);
 		}
 		return Normalize(normal);
+	}
+
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::qua<T,Q> LookAt(const glm::vec<3,T,Q>& forward, const glm::vec<3,T,Q>& up) {
+		return glm::quatLookAt(forward, up);
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::qua<T,Q> MakeQuat(const T radians, const glm::vec<3,T,Q>& axis) {
+		return glm::angleAxis(radians, axis);
 	}
 
 } // TRG

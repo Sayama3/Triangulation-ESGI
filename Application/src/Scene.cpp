@@ -3,22 +3,21 @@
 //
 
 #include "Scene.hpp"
+#include "ImGuiLib.hpp"
 
 #include <imgui.h>
 #include <rlImGui.h>
+#include <Core/Reinterpreter.hpp>
 
 
 namespace TRG::Application {
+
+	using namespace TRG::Literal;
 
 	Scene::Scene() {
 	}
 
 	Scene::~Scene() {
-		// De-Initialization
-		//--------------------------------------------------------------------------------------
-		UnloadTexture(background); // Unload background texture
-		UnloadTexture(midground); // Unload midground texture
-		UnloadTexture(foreground); // Unload foreground texture
 	}
 
 	Scene::Scene(Scene&& scene) noexcept {
@@ -30,83 +29,141 @@ namespace TRG::Application {
 	}
 
 	void Scene::Init() {
-		background = LoadTexture("Assets/cyberpunk_street_background.png");
-		midground = LoadTexture("Assets/cyberpunk_street_midground.png");
-		foreground = LoadTexture("Assets/cyberpunk_street_foreground.png");
+		m_Camera.InternalCamera.Position = {0,2,0};
+		m_Camera.InternalCamera.Rotation = Math::LookAt(Math::Normalize(Vec3{0,0, 1}), Vec3{0,1,0});
 	}
 
 	void Scene::Update(const float ts) {
-		// Update
-		//----------------------------------------------------------------------------------
-		scrollingBack -= 0.1f;
-		scrollingMid -= 0.5f;
-		scrollingFore -= 1.0f;
 
-		// NOTE: Texture is scaled twice its size, so it sould be considered on scrolling
-		if (scrollingBack <= -background.width * 2) scrollingBack = 0;
-		if (scrollingMid <= -midground.width * 2) scrollingMid = 0;
-		if (scrollingFore <= -foreground.width * 2) scrollingFore = 0;
-		//----------------------------------------------------------------------------------
+		m_IsInFps = IsMouseButtonDown(m_EnterFpsKey);
+
+		if (IsMouseButtonPressed(m_EnterFpsKey)) {
+			DisableCursor();
+		} else if (IsMouseButtonReleased(m_EnterFpsKey)) {
+			EnableCursor();
+		}
+
+		if (m_IsInFps) {
+			m_Camera.MoveCamera(ts, GetKeyboardMovement());
+			m_Camera.RotateCamera(GetMouseRotation());
+		}
 	}
 
 	void Scene::Render(const float ts) {
 
-			// Draw background image twice
-			// NOTE: Texture is scaled twice its size
-			DrawTextureEx(background, Vector2{scrollingBack, 20}, 0.0f, 2.0f, WHITE);
-			DrawTextureEx(background, Vector2{background.width * 2 + scrollingBack, 20}, 0.0f, 2.0f, WHITE);
-
-			// Draw midground image twice
-			DrawTextureEx(midground, Vector2{scrollingMid, 20}, 0.0f, 2.0f, WHITE);
-			DrawTextureEx(midground, Vector2{midground.width * 2 + scrollingMid, 20}, 0.0f, 2.0f, WHITE);
-
-			// Draw foreground image twice
-			DrawTextureEx(foreground, Vector2{scrollingFore, 70}, 0.0f, 2.0f, WHITE);
-			DrawTextureEx(foreground, Vector2{foreground.width * 2 + scrollingFore, 70}, 0.0f, 2.0f, WHITE);
-
-
-			{
-			}
-		//----------------------------------------------------------------------------------
 	}
 
 	void Scene::RenderGui(const float ts) {
 
-		DrawText("BACKGROUND SCROLLING & PARALLAX", 10, 10, 20, RED);
-		DrawText("(c) Cyberpunk Street Environment by Luis Zuno (@ansimuz)", m_Width - 330, m_Height - 20, 10,
-				 RAYWHITE);
+	}
+
+	void Scene::RenderImGuiCamera() {
+		ImGui::SetWindowSize(ImVec2{450, 250}, ImGuiCond_FirstUseEver);
+		ImGui::Begin("Camera");
+		{
+			ImGuiLib::DragReal3("Position", &m_Camera.InternalCamera.Position.x, 0.01, 0,0,"%.2f");
+			ImGuiLib::DragQuat("Rotation", &m_Camera.InternalCamera.Rotation, 0.001, 0,0,"%.3f");
+			ImGuiLib::DragReal("FOV Y", &m_Camera.InternalCamera.Fov, 0.1, 0,0,"%.1f");
+			ImGuiLib::DragReal("Sensitivity X", &m_Camera.SensitivityX, 0.0001, 0, REAL_MAX, "%.4f");
+			ImGuiLib::DragReal("Sensitivity Y", &m_Camera.SensitivityY, 0.0001, 0, REAL_MAX, "%.4f");
+			ImGui::Checkbox("Inverse X", &m_Camera.InverseX);
+			ImGui::Checkbox("Inverse Y", &m_Camera.InverseY);
+			ImGui::Spacing();
+			if (ImGui::Button("Edit Inputs")) {
+				m_EditInputs = true;
+			}
+		}
+		ImGui::End();
+	}
+
+	void Scene::RenderImGuiCameraInputs() {
+		if (m_EditInputs) {
+			ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
+			ImGui::Begin("Inputs", &m_EditInputs);
+			{
+				ImGui::BeginDisabled(m_IsInFps);
+				ImGuiLib::ComboMouseButton("Enter FpsKey", &m_EnterFpsKey);
+				ImGui::Spacing();
+				ImGuiLib::ComboKeyboardKey("Forward Key", &m_ForwardKey);
+				ImGuiLib::ComboKeyboardKey("Backward Key", &m_BackwardKey);
+				ImGuiLib::ComboKeyboardKey("Right Key", &m_RightKey);
+				ImGuiLib::ComboKeyboardKey("Left Key", &m_LeftKey);
+				ImGuiLib::ComboKeyboardKey("Up Key", &m_UpKey);
+				ImGuiLib::ComboKeyboardKey("Down Key", &m_DownKey);
+				ImGui::Spacing();
+				ImGuiLib::ComboKeyboardKey("Rotate Right Key", &m_RotateRightKey);
+				ImGuiLib::ComboKeyboardKey("Rotate Left Key", &m_RotateLeftKey);
+				ImGuiLib::ComboKeyboardKey("Rotate Up Key", &m_RotateUpKey);
+				ImGuiLib::ComboKeyboardKey("Rotate Down Key", &m_RotateDownKey);
+				ImGui::EndDisabled();
+			}
+			ImGui::End();
+		}
 	}
 
 	void Scene::RenderImGui(const float ts) {
-		static bool showDemo = true;
-		if (showDemo) ImGui::ShowDemoWindow(&showDemo);
+
+		RenderImGuiCamera();
+		RenderImGuiCameraInputs();
 	}
 
 	Camera3D Scene::GetCamera3D() const {
-		return Camera3D {
-			Vector3 {0,0,0},
-			Vector3 {0,0,1},
-			Vector3 {0,1,0},
-			float{60},
-			CAMERA_PERSPECTIVE,
-		};
-	}
-
-	void Scene::SetWindow(const uint32_t width, const uint32_t height) {
-		m_Width = width;
-		m_Height = height;
+		return m_Camera.GetCamera3D();
 	}
 
 	void Scene::swap(Scene &other) noexcept {
-		std::swap(background, other.background);
-		std::swap(midground, other.midground);
-		std::swap(foreground, other.foreground);
+		std::swap(m_Camera, other.m_Camera);
+	}
 
-		std::swap(m_Width, other.m_Width);
-		std::swap(m_Height, other.m_Height);
+	Vec3 Scene::GetKeyboardMovement() {
 
-		std::swap(scrollingBack, other.scrollingBack);
-		std::swap(scrollingMid, other.scrollingMid);
-		std::swap(scrollingFore, other.scrollingFore);
+		Vec3 movement{0};
+
+		if (IsKeyDown(m_ForwardKey)) {
+			movement.z += 1;
+		}
+		if (IsKeyDown(m_BackwardKey)) {
+			movement.z -= 1;
+		}
+
+		if (IsKeyDown(m_RightKey)) {
+			movement.x += 1;
+		}
+		if (IsKeyDown(m_LeftKey)) {
+			movement.x -= 1;
+		}
+
+		if (IsKeyDown(m_UpKey)) {
+			movement.y += 1;
+		}
+		if (IsKeyDown(m_DownKey)) {
+			movement.y -= 1;
+		}
+
+		return movement;
+	}
+
+	Vec2 Scene::GetKeyboardRotation() {
+		Vec2 rotation{0};
+
+		if (IsKeyDown(m_RotateRightKey)) {
+			rotation.x += 1;
+		}
+		if (IsKeyDown(m_RotateLeftKey)) {
+			rotation.x -= 1;
+		}
+
+		if (IsKeyDown(m_RotateUpKey)) {
+			rotation.y += 1;
+		}
+		if (IsKeyDown(m_RotateDownKey)) {
+			rotation.y -= 1;
+		}
+
+		return rotation;
+	}
+
+	Vec2 Scene::GetMouseRotation() {
+		return reinterpret<Vec2>(GetMouseDelta());
 	}
 } // TRG::Application

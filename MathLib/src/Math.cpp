@@ -4,7 +4,7 @@
 
 #include "TRG/Math.hpp"
 
-using namespace TRG::Math::Literal;
+using namespace TRG::Literal;
 
 namespace TRG::Math
 {
