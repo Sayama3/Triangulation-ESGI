@@ -11,7 +11,7 @@ namespace TRG::Application {
 		return Camera3D {
 			reinterpret<Vector3>(Position),
 			reinterpret<Vector3>(Position + CalculateForward()),
-			reinterpret<Vector3>(Rotation * CalculateUp()),
+			reinterpret<Vector3>(CalculateUp()),
 			Fov,
 			CAMERA_PERSPECTIVE,
 		};
