@@ -7,6 +7,7 @@ set(TRG_SRC_FILES
 		include/TRG/Math/Basics.hpp
 		include/TRG/Math/Geometry.hpp
 		include/TRG/Math/Types.hpp
+		include/TRG/Math/Shells.hpp
 )
 
 add_library(MathLib STATIC ${TRG_SRC_FILES})

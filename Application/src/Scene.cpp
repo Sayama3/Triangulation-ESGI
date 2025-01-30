@@ -83,6 +83,14 @@ namespace TRG::Application {
 			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), color);
 		}
 
+		constexpr auto jarvisColor = Color{ 50, 40, 180, 255};
+		for (uint64_t i = 0; i < m_JarvisShell.size(); ++i) {
+			const auto& current = m_JarvisShell[i];
+			const auto& next = m_JarvisShell[(i + 1) % m_JarvisShell.size()];
+			DrawSphere(Vector3(current.x, 0, current.y), 0.1, jarvisColor);
+			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), jarvisColor);
+		}
+
 		if (m_Action == Action::AddPoint && PointToAdd.has_value()) {
 			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{180, 50, 40, 150});
 			TraceLog(TraceLogLevel::LOG_INFO, "Position (%f, %f, %f)", PointToAdd.value().x, PointToAdd.value().y, PointToAdd.value().z);
@@ -98,6 +106,7 @@ namespace TRG::Application {
 		RenderImGuiPoints();
 		RenderImGuiCamera();
 		RenderImGuiCameraInputs();
+		RenderImGuiJarvisShell();
 	}
 	void Scene::RenderImGuiPoints() {
 		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
@@ -120,6 +129,10 @@ namespace TRG::Application {
 					}
 					return angleA < angleB;
 				});
+			}
+
+			if (ImGui::Button("Make Jarvis Shell")) {
+				m_JarvisShell = Math::JarvisConvexShell(m_2DPoints.begin(), m_2DPoints.end());
 			}
 
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
@@ -182,6 +195,24 @@ namespace TRG::Application {
 				ImGui::EndDisabled();
 			}
 			ImGui::End();
+		}
+	}
+
+	void Scene::RenderImGuiJarvisShell() {
+		bool open = !m_JarvisShell.empty();
+		if (open) {
+			ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
+			ImGui::Begin("Jarvis Shell", &open);
+			{
+				for (uint64_t i = 0; i < m_JarvisShell.size(); ++i) {
+					ImGui::PushID(i);
+					std::string name = "Point " + std::to_string(i);
+					ImGuiLib::DragReal2(name.c_str(), &m_JarvisShell[i].x, 0.01, 0,0, "%.2f");
+					ImGui::PopID();
+				}
+			}
+			ImGui::End();
+			if (!open) m_JarvisShell.clear();
 		}
 	}
 

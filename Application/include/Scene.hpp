@@ -37,6 +37,7 @@ namespace TRG::Application {
 		void RenderImGuiPoints();
 		void RenderImGuiCamera();
 		void RenderImGuiCameraInputs();
+		void RenderImGuiJarvisShell();
 
 		void RenderImGui(float ts) override;
 		[[nodiscard]] Camera3D GetCamera3D() const;
@@ -66,15 +67,18 @@ namespace TRG::Application {
 		void EndAddPoint(float ts);
 
 		void UpdatePointToAdd();
-	private:
-		std::vector<Vec2> m_2DPoints;
 
+	private:
 		EditorCamera m_Camera;
 		Mat4 InvViewProjMatrix;
 		Real m_ScreenWidth;
 		Real m_ScreenHeight;
 		bool InvViewProjMatrixDirty = true;
 		std::optional<Vec3> PointToAdd;
+	private:
+		std::vector<Vec2> m_2DPoints;
+	private:
+		std::vector<Vec2> m_JarvisShell;
 	public:
 		MouseButton m_AddPoint = MOUSE_BUTTON_MIDDLE;
 		MouseButton m_EnterFpsKey = MOUSE_BUTTON_RIGHT;

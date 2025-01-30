@@ -106,6 +106,7 @@ namespace TRG::Math {
 
 	template<class fwd_iterator, glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static glm::vec<L,T,Q> CalculateCenter(const fwd_iterator begin, const fwd_iterator end) {
+		if (begin == end) return {};
 		glm::vec<L,T,Q> center{static_cast<T>(0)};
 		uint64_t count{0ull};
 		for (auto it = begin; it != end; ++it) {
