@@ -91,6 +91,14 @@ namespace TRG::Application {
 			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), jarvisColor);
 		}
 
+		constexpr auto GrahamScanColor = Color{ 180, 20, 160, 255};
+		for (uint64_t i = 0; i < m_GrahamScanShell.size(); ++i) {
+			const auto& current = m_GrahamScanShell[i];
+			const auto& next = m_GrahamScanShell[(i + 1) % m_GrahamScanShell.size()];
+			DrawSphere(Vector3(current.x, 0, current.y), 0.1, GrahamScanColor);
+			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), GrahamScanColor);
+		}
+
 		if (m_Action == Action::AddPoint && PointToAdd.has_value()) {
 			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{180, 50, 40, 150});
 			TraceLog(TraceLogLevel::LOG_INFO, "Position (%f, %f, %f)", PointToAdd.value().x, PointToAdd.value().y, PointToAdd.value().z);
@@ -107,6 +115,7 @@ namespace TRG::Application {
 		RenderImGuiCamera();
 		RenderImGuiCameraInputs();
 		RenderImGuiJarvisShell();
+		RenderImGuiGrahamScanShell();
 	}
 	void Scene::RenderImGuiPoints() {
 		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
@@ -133,6 +142,11 @@ namespace TRG::Application {
 
 			if (ImGui::Button("Make Jarvis Shell")) {
 				m_JarvisShell = Math::JarvisConvexShell(m_2DPoints.begin(), m_2DPoints.end());
+			}
+
+			if (ImGui::Button("Make Graham Scan Shell")) {
+				 auto list = Math::GrahamScanConvexShell(m_2DPoints.begin(), m_2DPoints.end());
+				m_GrahamScanShell = std::vector<Vec2>(list.begin(), list.end());
 			}
 
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
@@ -213,6 +227,23 @@ namespace TRG::Application {
 			}
 			ImGui::End();
 			if (!open) m_JarvisShell.clear();
+		}
+	}
+	void Scene::RenderImGuiGrahamScanShell() {
+		bool open = !m_GrahamScanShell.empty();
+		if (open) {
+			ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
+			ImGui::Begin("Graham Scan Shell", &open);
+			{
+				for (uint64_t i = 0; i < m_GrahamScanShell.size(); ++i) {
+					ImGui::PushID(i);
+					std::string name = "Point " + std::to_string(i);
+					ImGuiLib::DragReal2(name.c_str(), &m_GrahamScanShell[i].x, 0.01, 0,0, "%.2f");
+					ImGui::PopID();
+				}
+			}
+			ImGui::End();
+			if (!open) m_GrahamScanShell.clear();
 		}
 	}
 

@@ -39,6 +39,8 @@ namespace TRG::Application {
 		void RenderImGuiCameraInputs();
 		void RenderImGuiJarvisShell();
 
+		void RenderImGuiGrahamScanShell();
+
 		void RenderImGui(float ts) override;
 		[[nodiscard]] Camera3D GetCamera3D() const;
 	public:
@@ -79,6 +81,7 @@ namespace TRG::Application {
 		std::vector<Vec2> m_2DPoints;
 	private:
 		std::vector<Vec2> m_JarvisShell;
+		std::vector<Vec2> m_GrahamScanShell;
 	public:
 		MouseButton m_AddPoint = MOUSE_BUTTON_MIDDLE;
 		MouseButton m_EnterFpsKey = MOUSE_BUTTON_RIGHT;
