@@ -3,7 +3,9 @@
 //
 
 #pragma once
+
 #include "Scene.hpp"
+#include "Core/Singleton.hpp"
 
 namespace TRG::Application {
 
@@ -34,4 +36,7 @@ namespace TRG::Application {
 		uint32_t m_Height;
 		Scene m_Scene;
 	};
+
+
+	using SingletonApp = TRG::Application::Singleton<TRG::Application::Application>;
 } // TRG::Application

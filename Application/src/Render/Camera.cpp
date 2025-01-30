@@ -3,6 +3,7 @@
 //
 
 #include "Render/Camera.hpp"
+
 #include "Core/Reinterpreter.hpp"
 
 
@@ -15,6 +16,14 @@ namespace TRG::Application {
 			Fov,
 			CAMERA_PERSPECTIVE,
 		};
+	}
+
+	Mat4 Camera::GetViewMatrix() const {
+		return glm::inverse(glm::translate(glm::mat4(1.0f), Position) * glm::toMat4(Rotation));
+	}
+
+	Mat4 Camera::GetProjectionMatrix(const Real width, const Real height, const Real near, const Real far) const {
+		return glm::perspectiveFov(Fov * deg2rad, width, height, near, far);
 	}
 
 	Vec3 Camera::CalculateForward() const {

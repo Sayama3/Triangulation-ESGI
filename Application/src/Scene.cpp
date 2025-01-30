@@ -6,8 +6,12 @@
 #include "ImGuiLib.hpp"
 
 #include <imgui.h>
+#include <rcamera.h>
 #include <rlImGui.h>
 #include <Core/Reinterpreter.hpp>
+
+#include "Application.hpp"
+#include "Core/Singleton.hpp"
 
 
 namespace TRG::Application {
@@ -30,26 +34,50 @@ namespace TRG::Application {
 
 	void Scene::Init() {
 		m_Camera.InternalCamera.Position = {0,2,0};
-		m_Camera.InternalCamera.Rotation = Math::LookAt(Math::Normalize(Vec3{0,0, 1}), Vec3{0,1,0});
+		m_Camera.InternalCamera.Rotation = Math::MakeQuat(45*deg2rad, {1,0,0});
 	}
 
 	void Scene::Update(const float ts) {
 
-		m_IsInFps = IsMouseButtonDown(m_EnterFpsKey);
-
-		if (IsMouseButtonPressed(m_EnterFpsKey)) {
-			DisableCursor();
-		} else if (IsMouseButtonReleased(m_EnterFpsKey)) {
-			EnableCursor();
+		if (m_Action == Action::None) {
+			if (IsMouseButtonPressed(m_EnterFpsKey)) {
+				m_Action = Action::FreeCam;
+				OnEnterFreeCam(ts);
+			}
+			else if (IsMouseButtonPressed(m_AddPoint)) {
+				m_Action = Action::AddPoint;
+				BeginAddPoint(ts);
+			}
 		}
 
-		if (m_IsInFps) {
-			m_Camera.MoveCamera(ts, GetKeyboardMovement());
-			m_Camera.RotateCamera(GetMouseRotation());
+		if (m_Action == Action::FreeCam && IsMouseButtonReleased(m_EnterFpsKey)) {
+			OnExitFreeCam(ts);
+			m_Action = Action::None;
+		}
+		else if (m_Action == Action::AddPoint && IsMouseButtonReleased(m_AddPoint)) {
+			EndAddPoint(ts);
+			m_Action = Action::None;
+		}
+
+		switch (m_Action) {
+			case Action::None:
+				break;
+			case Action::FreeCam : {
+				OnFreeCam(ts);
+				break;
+			}
+			case Action::AddPoint : {
+				OnAddingPoint(ts);
+				break;
+			}
 		}
 	}
 
 	void Scene::Render(const float ts) {
+		if (m_Action == Action::AddPoint && PointToAdd.has_value()) {
+			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{180, 50, 40, 150});
+			TraceLog(TraceLogLevel::LOG_INFO, "Position (%f, %f, %f)", PointToAdd.value().x, PointToAdd.value().y, PointToAdd.value().z);
+		}
 
 	}
 
@@ -81,8 +109,9 @@ namespace TRG::Application {
 			ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
 			ImGui::Begin("Inputs", &m_EditInputs);
 			{
-				ImGui::BeginDisabled(m_IsInFps);
-				ImGuiLib::ComboMouseButton("Enter FpsKey", &m_EnterFpsKey);
+				ImGui::BeginDisabled(m_Action != Action::None);
+				ImGuiLib::ComboMouseButton("Add Point Key", &m_AddPoint);
+				ImGuiLib::ComboMouseButton("FreeCam Key", &m_EnterFpsKey);
 				ImGui::Spacing();
 				ImGuiLib::ComboKeyboardKey("Forward Key", &m_ForwardKey);
 				ImGuiLib::ComboKeyboardKey("Backward Key", &m_BackwardKey);
@@ -166,4 +195,82 @@ namespace TRG::Application {
 	Vec2 Scene::GetMouseRotation() {
 		return reinterpret<Vec2>(GetMouseDelta());
 	}
+
+	void Scene::OnEnterFreeCam(float ts) {
+		DisableCursor();
+		InvViewProjMatrixDirty = true;
+	}
+
+	void Scene::OnFreeCam(float ts) {
+		m_Camera.MoveCamera(ts, GetKeyboardMovement());
+		m_Camera.RotateCamera(GetMouseRotation());
+	}
+
+	void Scene::OnExitFreeCam(float ts) {
+		EnableCursor();
+	}
+
+	Vec3 Scene::GetMouseToWorldPos() const {
+		const auto mousePos = reinterpret<Vec2>(GetMousePosition());
+		return GetScreenToWorldPos(mousePos);
+	}
+
+	Ray3 Scene::GetMouseToWorldRay() const {
+		const auto mousePos = reinterpret<Vec2>(GetMousePosition());
+		return GetScreenToWorldRay(mousePos);
+	}
+
+	Vec3 Scene::GetScreenToWorldPos(const Vec2 screenPos) const {
+		const auto normalizeMousePos = Vec2{(screenPos.x  / m_ScreenWidth) * 2_r - 1_r, (screenPos.y  / m_ScreenHeight) * 2_r - 1_r};
+		const Vec4 result = InvViewProjMatrix * Vec4{normalizeMousePos.x, normalizeMousePos.y, 6, 1};
+		const Vec4 resultNormalize = result / result.w;
+		return resultNormalize;
+	}
+
+	Ray3 Scene::GetScreenToWorldRay(const Vec2 screenPos) const {
+		const auto worldScreenPos = GetScreenToWorldPos(screenPos);
+		const auto camPos = m_Camera.InternalCamera.Position;
+		return Ray3{camPos, Math::Normalize(worldScreenPos - camPos)};
+	}
+
+	void Scene::TryUpdateInvViewProjMatrix(const uint32_t newScreenWidth, const uint32_t newScreenHeight) {
+		if (InvViewProjMatrixDirty || newScreenWidth != m_ScreenWidth || newScreenHeight != m_ScreenHeight) {
+			m_ScreenWidth = newScreenWidth;
+			m_ScreenHeight = newScreenHeight;
+			InvViewProjMatrixDirty = false;
+
+			const Mat4 viewMat  = m_Camera.InternalCamera.GetViewMatrix();
+			const Mat4 projMat  = m_Camera.InternalCamera.GetProjectionMatrix(m_ScreenWidth, m_ScreenHeight);
+
+			const auto viewProj = projMat * viewMat;
+			InvViewProjMatrix = glm::inverse(viewProj);
+		}
+	}
+
+	void Scene::BeginAddPoint(float ts) {
+		UpdatePointToAdd();
+	}
+
+	void Scene::OnAddingPoint(float ts) {
+		UpdatePointToAdd();
+	}
+
+	void Scene::EndAddPoint(float ts) {
+		PointToAdd.reset();
+	}
+
+	void Scene::UpdatePointToAdd() {
+		const auto& app = SingletonApp::Get();
+
+		TryUpdateInvViewProjMatrix(app.GetWidth(), app.GetHeight());
+		const auto ray = GetMouseToWorldRay();
+		const Plane ground {{0,0,0}, {0,1,0}};
+		const auto t = Math::Raycast(ground, ray);
+		if (t && t.value() > REAL_EPSILON) {
+			PointToAdd = ray.GetPoint(t.value());
+		} else {
+			PointToAdd = std::nullopt;
+		}
+	}
+
 } // TRG::Application

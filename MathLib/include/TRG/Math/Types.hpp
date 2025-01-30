@@ -68,6 +68,31 @@ namespace TRG {
 
 namespace TRG {
 
+	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	struct Ray {
+		Ray() = default;
+		~Ray() = default;
+		Ray(glm::vec<L,T,Q> origin, glm::vec<L,T,Q> direction) : Origin(origin), Direction(direction) {}
+
+		glm::vec<L,T,Q> GetPoint(T t) const {
+			return Origin + Direction * t;
+		}
+		glm::vec<L,T,Q> Origin;
+		glm::vec<L,T,Q> Direction;
+	};
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	struct Plane {
+		Plane() = default;
+		~Plane() = default;
+		Plane(glm::vec<3,T,Q> origin, glm::vec<3,T,Q> normal) : Origin(origin), Normal(normal) {}
+		glm::vec<3,T,Q> Origin;
+		glm::vec<3,T,Q> Normal;
+	};
+}
+
+namespace TRG {
+
 	typedef glm::qua<Real> Quat;
 	typedef glm::vec<4, Real> Vec4;
 	typedef glm::vec<3, Real> Vec3;
@@ -78,6 +103,9 @@ namespace TRG {
 	typedef glm::mat<3, 3, Real> Mat3x3; typedef Mat3x3 Mat3;
 	typedef glm::mat<2, 2, Real> Mat2x2; typedef Mat2x2 Mat2;
 	typedef glm::mat<3, 2, Real> Mat3x2;
+
+	typedef Ray<3, Real> Ray3;
+	typedef Ray<2, Real> Ray2;
 
 	inline static constexpr Real tau {6.28318530717958647692};
 	inline static constexpr Real pi  {3.14159265358979323846};
@@ -90,25 +118,5 @@ namespace TRG {
 		constexpr Real operator ""_r(const unsigned long long int value) {return static_cast<Real>(value);}
 		constexpr Real operator ""_r(const long double value) {return static_cast<Real>(value);}
 	}
-
-	template<glm::length_t L, typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	struct Ray {
-		Ray() = default;
-		~Ray() = default;
-		Ray(glm::vec<L,T,Q> origin, glm::vec<L,T,Q> direction) : Origin(origin), Direction(direction) {}
-
-		glm::vec<L,T,Q> GetPoint(T t) const {return Origin + Direction * t;}
-		glm::vec<L,T,Q> Origin;
-		glm::vec<L,T,Q> Direction;
-	};
-
-	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
-	struct Plane {
-		Plane() = default;
-		~Plane() = default;
-		Plane(glm::vec<3,T,Q> origin, glm::vec<3,T,Q> direction) : Origin(origin), Normal(direction) {}
-		glm::vec<3,T,Q> Origin;
-		glm::vec<3,T,Q> Normal;
-	};
 
 }

@@ -11,6 +11,12 @@
 
 namespace TRG::Application {
 
+	enum class Action {
+		None,
+		AddPoint,
+		FreeCam
+	};
+
 	class Scene final : public Renderable {
 	public:
 		Scene();
@@ -42,9 +48,35 @@ namespace TRG::Application {
 		[[nodiscard]] Vec2 GetKeyboardRotation();
 		[[nodiscard]] Vec2 GetMouseRotation();
 	private:
+		void OnEnterFreeCam(float ts);
+		void OnFreeCam(float ts);
+		void OnExitFreeCam(float ts);
+
+		Vec3 GetMouseToWorldPos() const;
+		Vec3 GetScreenToWorldPos(Vec2 screenPos) const;
+
+		Ray3 GetMouseToWorldRay() const;
+		Ray3 GetScreenToWorldRay(Vec2 screenPos) const;
+
+		void TryUpdateInvViewProjMatrix(uint32_t newScreenWidth, uint32_t newScreenHeight);
+
+	private:
+		void BeginAddPoint(float ts);
+		void OnAddingPoint(float ts);
+		void EndAddPoint(float ts);
+
+		void UpdatePointToAdd();
+	private:
 		EditorCamera m_Camera;
+		Mat4 InvViewProjMatrix;
+		Real m_ScreenWidth;
+		Real m_ScreenHeight;
+		bool InvViewProjMatrixDirty = true;
+		std::optional<Vec3> PointToAdd;
 	public:
+		MouseButton m_AddPoint = MOUSE_BUTTON_MIDDLE;
 		MouseButton m_EnterFpsKey = MOUSE_BUTTON_RIGHT;
+
 		KeyboardKey m_ForwardKey = KeyboardKey::KEY_W;
 		KeyboardKey m_BackwardKey = KeyboardKey::KEY_S;
 		KeyboardKey m_RightKey = KeyboardKey::KEY_A;
@@ -56,7 +88,7 @@ namespace TRG::Application {
 		KeyboardKey m_RotateUpKey = KeyboardKey::KEY_UP;
 		KeyboardKey m_RotateDownKey = KeyboardKey::KEY_DOWN;
 	private:
-		bool m_IsInFps = false;
+		Action m_Action = Action::None;
 		bool m_EditInputs = false;
 	};
 

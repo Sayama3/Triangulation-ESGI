@@ -2,7 +2,7 @@
 // Created by ianpo on 30/01/2025.
 //
 
-#include "../../include/Render/EditorCamera.hpp"
+#include "Render/EditorCamera.hpp"
 
 using namespace TRG::Literal;
 
