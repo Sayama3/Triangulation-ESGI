@@ -72,11 +72,13 @@ namespace TRG::Application {
 
 	private:
 		EditorCamera m_Camera;
+		Model m_Model;
 		Mat4 InvViewProjMatrix;
+		std::optional<Vec3> PointToAdd;
 		Real m_ScreenWidth;
 		Real m_ScreenHeight;
 		bool InvViewProjMatrixDirty = true;
-		std::optional<Vec3> PointToAdd;
+
 	private:
 		std::vector<Vec2> m_2DPoints;
 	private:

@@ -22,6 +22,7 @@ namespace TRG::Application {
 	}
 
 	Scene::~Scene() {
+		UnloadModel(m_Model);
 	}
 
 	Scene::Scene(Scene&& scene) noexcept {
@@ -75,6 +76,9 @@ namespace TRG::Application {
 	}
 
 	void Scene::Render(const float ts) {
+		if (IsModelValid(m_Model)) {
+			DrawModel(m_Model, Vector3(0,0,0), 1.0, Color(180, 180, 180, 255));
+		}
 		constexpr auto color = Color{ 50, 180, 40, 255};
 		for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
 			const auto& current = m_2DPoints[i];
@@ -147,6 +151,24 @@ namespace TRG::Application {
 			if (ImGui::Button("Make Graham Scan Shell")) {
 				 auto list = Math::GrahamScanConvexShell(m_2DPoints.begin(), m_2DPoints.end());
 				m_GrahamScanShell = std::vector<Vec2>(list.begin(), list.end());
+			}
+
+			if (ImGui::Button("Incremental Triangulation")) {
+				 auto [vertices, indices] = Math::IncrementalTriangulation(m_2DPoints.cbegin(), m_2DPoints.cend());
+				Mesh mesh{};
+				mesh.vertexCount = vertices.size();
+				mesh.triangleCount = indices.size() / 3;
+				mesh.vertices = static_cast<float *>(malloc(sizeof(float) * 3 * vertices.size()));
+				mesh.indices = static_cast<unsigned short *>(malloc(sizeof(unsigned short) * indices.size()));
+				for (uint64_t i = 0; i < vertices.size()*3; i+=3) {
+					mesh.vertices[i + 0] = vertices[i].x;
+					mesh.vertices[i + 1] = 0;
+					mesh.vertices[i + 2] = vertices[i].y;
+				}
+				for (uint64_t i = 0; i < indices.size(); ++i) {
+					mesh.indices[i] = indices[i];
+				}
+				m_Model = LoadModelFromMesh(mesh);
 			}
 
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
