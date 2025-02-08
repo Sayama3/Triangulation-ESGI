@@ -27,6 +27,8 @@ namespace TRG::Application {
 		void RenderGui(float ts);
 		void RenderImGui(float ts);
 	public:
+		void CustomBegin3D(const TRG::Application::Camera& camera);
+	public:
 		void swap(Application& application) noexcept;
 	public:
 		[[nodiscard]] uint32_t GetWidth() const {return m_Width;}

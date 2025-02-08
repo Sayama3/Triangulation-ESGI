@@ -7,206 +7,128 @@
 #include "Basics.hpp"
 
 namespace TRG::Math {
-	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
-	class MeshGraph2D {
+	class MeshGraph {
 	public:
-		template<typename TVec>
-		using List = std::list<TVec>;
+		using T = Real;
+		static inline constexpr glm::size_t L = 2;
 
-		using Vertice = glm::vec<2, T, Q>;
-		using ListVertice = List<Vertice>;
-		using VerticeIter = typename ListVertice::iterator;
+		using Vector2 = glm::vec<L,T>;
+
+		struct Vertex {
+			Vector2 Position;
+			// std::vector<uint32_t> AssociatedEdges{};
+		};
 
 		struct Edge {
-			Edge() : leftTriangle{}, rightTriangle{} {}
-			~Edge() {}
-			Edge(VerticeIter a, VerticeIter b) : a(a), b(b), leftTriangle{}, rightTriangle{}  {}
-			Edge(const Edge& other) : a(other.a),  b(other.b), leftTriangle(other.leftTriangle), rightTriangle(other.rightTriangle) {}
-			Edge& operator=(const Edge& other) {a = other.a;  b = other.b; leftTriangle = other.leftTriangle; rightTriangle = other.rightTriangle; return *this;}
-
-			union {
-				struct {
-					VerticeIter a;
-					VerticeIter b;
-				};
-
-				VerticeIter vertices[2];
-			};
-
-			union {
-				struct {
-					std::any leftTriangle;
-					std::any rightTriangle;
-				};
-
-				std::any triangles[2];
-			};
-
-			bool operator==(const Edge &other) const {
-				return (a == other.a && b == other.b) || (b == other.a && a == other.b);
-			}
-
-			bool operator!=(const Edge &other) const { return !(*this == other); }
+			uint32_t VertexA;
+			uint32_t VertexB;
+			std::optional<uint32_t> TriangleLeft{std::nullopt};
+			std::optional<uint32_t> TriangleRight{std::nullopt};
 		};
-		using ListEdge = List<Edge>;
-		using EdgeIter = typename ListEdge::iterator;
 
 		struct Triangle {
-			Triangle() {};
-			~Triangle() {};
-			Triangle(EdgeIter ab, EdgeIter bc, EdgeIter ca) : ab(ab), bc(bc), ca(ca) {}
-			Triangle(const Triangle& other) : ab(other.ab),  bc(other.bc),  ca(other.ca) {}
-			Triangle& operator=(const Triangle& other) {ab = other.ab;  bc = other.bc;  ca = other.ca; return *this;}
-			union {
-				struct {
-					EdgeIter ab;
-					EdgeIter bc;
-					EdgeIter ca;
-				};
-
-				EdgeIter edges[3];
-			};
-
-			bool operator==(const Triangle &other) const {
-				bool same = true;
-				for (int i = 0; i < 3; ++i) {
-					bool found = false;
-					for (int j = 0; j < 3; ++j) {
-						if (edges[i] == other.edges[j]) {
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						same = false;
-						break;
-					}
-				}
-				return same;
-			}
-			bool operator!=(const Triangle &other) const { return !(*this == other); }
+			uint32_t EdgeA;
+			uint32_t EdgeB;
+			uint32_t EdgeC;
 		};
-
-		using ListTriangle = List<Triangle>;
-		using TriangleIter = typename ListTriangle::iterator;
-
-
 	public:
-		MeshGraph2D() = default;
-		~MeshGraph2D() = default;
+		void AddPoint(Vector2 point);
 	public:
-		void AddVertex(const Vertice &vertice);
-		std::pair<std::vector<glm::vec<2,T,Q>>, std::vector<uint32_t>> GenerateMesh() const;
+		std::map<uint32_t, Vertex> m_Vertices;
+		std::map<uint32_t, Edge> m_Edges;
+		std::map<uint32_t, Triangle> m_Triangles;
 	private:
-		ListVertice m_Vertices;
-		ListEdge m_Edges;
-		ListTriangle m_Triangles;
-		bool m_Initialized = false;
+		[[nodiscard]] uint32_t GenerateVertexId() { return m_VertexIdGenerator++; };
+		[[nodiscard]] uint32_t GenerateEdgeId() { return m_EdgeIdGenerator++; };
+		[[nodiscard]] uint32_t GenerateTriangleId() { return m_TriangleIdGenerator++; };
+	private:
+		uint32_t m_VertexIdGenerator{0};
+		uint32_t m_EdgeIdGenerator{0};
+		uint32_t m_TriangleIdGenerator{0};
 	};
 
-	template<typename T, glm::qualifier Q>
-	void MeshGraph2D<T, Q>::AddVertex(const Vertice &vertice) {
-		VerticeIter vertIt = m_Vertices.insert(m_Vertices.end(), vertice);
-		const auto verticesCount = m_Vertices.size();
-		if (verticesCount == 2) {
-			// Inserting the first edge
-			m_Edges.insert(m_Edges.cend(), Edge{m_Vertices.begin(), vertIt});
-		}
-		else if (verticesCount > 2 && !m_Initialized) {
-			// Add the new Edge
-			VerticeIter prevIt = vertIt;
-			--prevIt;
+	inline void MeshGraph::AddPoint(const Vector2 point) {
+		const uint32_t newVertId = GenerateVertexId();
+		m_Vertices[newVertId] = {point};
 
-			// Prepare the loop from the second vertices to check if everything is collinear
-			VerticeIter firstVertIt = m_Vertices.begin();
-			const T dotProd = Math::Dot(Math::Normalize(*prevIt - *firstVertIt),
-			                            Math::Normalize(*vertIt - *firstVertIt));
-			const bool isCollinear = std::abs(dotProd) >= 1-std::numeric_limits<T>::epsilon();
-			if (isCollinear) {
-				m_Edges.insert(m_Edges.begin(), Edge{prevIt, vertIt});
+		if (m_Vertices.size() > 2) {
+			std::unordered_set<uint32_t> compatibleVertices;
+			compatibleVertices.reserve(m_Edges.size() - 1);
+
+			std::vector<uint32_t> compatibleEdges{};
+			compatibleEdges.reserve(m_Edges.size());
+
+			for (auto&[ABId, edgeAB] : m_Edges) {
+				if (edgeAB.TriangleLeft && edgeAB.TriangleRight) continue;
+
+				const auto& vertA = m_Vertices.at(edgeAB.VertexA);
+				const auto& vertB = m_Vertices.at(edgeAB.VertexB);
+
+				const auto aToB = vertB.Position - vertA.Position;
+				const auto aToC = point - vertA.Position;
+
+				const bool isAligned = std::abs(Math::Dot(Math::Normalize(aToB), Math::Normalize(aToC))) >= 1-REAL_EPSILON;
+				if (isAligned) continue;
+
+				const bool isLeft = Math::IsTriangleOriented(aToB, aToC);
+				if (isLeft && edgeAB.TriangleLeft) continue;
+				if (!isLeft && edgeAB.TriangleRight) continue;
+
+				compatibleEdges.push_back(ABId);
+				compatibleVertices.insert(edgeAB.VertexA);
+				compatibleVertices.insert(edgeAB.VertexB);
 			}
-			else {
-				// Initilizing all the triangles
-				m_Initialized = true;
-				for (EdgeIter abIt = m_Edges.begin(); abIt != m_Edges.end(); ++abIt) {
-					if (abIt->a == vertIt || abIt->b == vertIt) continue;
-					const bool isOriented = Math::IsTriangleOriented(*abIt->a, *abIt->b, vertice);
-					EdgeIter bcIt = m_Edges.insert(m_Edges.cend(), Edge{abIt->b, vertIt});
-					EdgeIter caIt = m_Edges.insert(m_Edges.cend(), Edge{vertIt, abIt->a});
 
-					TriangleIter abc = m_Triangles.insert(m_Triangles.cend(), Triangle{abIt, bcIt, caIt});
-					if (isOriented) {
-						abIt->leftTriangle = abc;
-						bcIt->leftTriangle = abc;
-						caIt->leftTriangle = abc;
-					} else {
-						abIt->rightTriangle = abc;
-						bcIt->rightTriangle = abc;
-						caIt->rightTriangle = abc;
-					}
-				}
+			std::unordered_map<uint32_t, uint32_t> verticeToPromotedVertices;
+			verticeToPromotedVertices.reserve(compatibleVertices.size());
+
+			for (const auto vertId : compatibleVertices) {
+				const auto newEdgeId = GenerateEdgeId();
+				verticeToPromotedVertices[vertId] = newEdgeId;
+				m_Edges[newEdgeId] = {vertId, newVertId};
 			}
-		}
-		else if (verticesCount > 2 && m_Initialized) {
-			// TODO: Take in account internal triangles
-			for (auto abIt = m_Edges.begin(); abIt != m_Edges.end(); ++abIt) {
-				// Check Self
-				if (abIt->a == vertIt || abIt->b == vertIt) continue;
-				// Check collinear
-				if (std::abs(Math::Dot(Math::Normalize(*abIt->b - *abIt->a), Math::Normalize(*vertIt - *abIt->a)))  >= static_cast<T>(1)-std::numeric_limits<T>::epsilon()) continue;
 
-				bool isOriented = Math::IsTriangleOriented(*abIt->a, *abIt->b, vertice);
+			for (const auto ABId: compatibleEdges) {
+				auto& AB = m_Edges[ABId];
+				const auto BCId = verticeToPromotedVertices[AB.VertexB];
+				const auto ACId = verticeToPromotedVertices[AB.VertexA];
+				auto& BC = m_Edges[BCId];
+				auto& AC = m_Edges[ACId];
 
-				// Check triangle not taken
-				if (isOriented && !abIt->leftTriangle.has_value()) continue;
-				if (!isOriented && !abIt->rightTriangle.has_value()) continue;
+				const auto A = m_Vertices[AB.VertexA];
+				const auto B = m_Vertices[AB.VertexB];
+				const auto C = m_Vertices[newVertId];
 
-				EdgeIter bcIt = m_Edges.insert(m_Edges.cend(), Edge{abIt->b, vertIt});
-				EdgeIter caIt = m_Edges.insert(m_Edges.cend(), Edge{vertIt, abIt->a});
+				if (Math::IsTriangleOriented(A.Position, B.Position, C.Position)) {
+					const auto ABCId = GenerateTriangleId();
+					const auto ABC = Triangle{ABId, BCId, ACId};
+					m_Triangles[ABCId] = ABC;
 
-				TriangleIter abc = m_Triangles.insert(m_Triangles.cend(), Triangle{abIt, bcIt, caIt});
-				if (isOriented) {
-					abIt->leftTriangle = abc;
-					bcIt->leftTriangle = abc;
-					caIt->leftTriangle = abc;
+					AB.TriangleLeft = ABCId;
+					BC.TriangleLeft = ABCId;
+					AC.TriangleRight = ABCId;
 				} else {
-					abIt->rightTriangle = abc;
-					bcIt->rightTriangle = abc;
-					caIt->rightTriangle = abc;
+					const auto ABCId = GenerateTriangleId();
+					const auto ABC = Triangle{ABId, ACId, BCId};
+					m_Triangles[ABCId] = ABC;
+
+					AB.TriangleRight = ABCId;
+					BC.TriangleRight = ABCId;
+					AC.TriangleLeft = ABCId;
 				}
 			}
 		}
-	}
-
-	template<typename T, glm::qualifier Q>
-	std::pair<std::vector<glm::vec<2, T, Q>>, std::vector<uint32_t>> MeshGraph2D<T, Q>::GenerateMesh() const {
-		std::unordered_map<glm::vec<2, T, Q>, uint32_t> verticesIndices;
-		std::vector<glm::vec<2, T, Q>> vertices;
-		verticesIndices.reserve(m_Vertices.size());
-		vertices.reserve(m_Vertices.size());
-
-		for (auto vertIt = m_Vertices.cbegin(); vertIt != m_Vertices.cend(); ++vertIt) {
-			verticesIndices[*vertIt] = vertices.size();
-			// verticesIndices.insert({vertIt, vertices.size()});
-			vertices.push_back(*vertIt);
-		}
-
-		std::vector<uint32_t> indices;
-		indices.reserve(m_Triangles.size() * 3);
-
-		for (auto triangleIt = m_Triangles.cbegin(); triangleIt != m_Triangles.cend(); ++triangleIt) {
-			indices.push_back(verticesIndices.at(*triangleIt->ab->a)); // Insert A from ABC
-			TriangleIter leftTriangleIterPtr = std::any_cast<TriangleIter>(triangleIt->bc->leftTriangle);
-
-			if (leftTriangleIterPtr == triangleIt) {
-				indices.push_back(verticesIndices.at(*triangleIt->ab->b));  // Insert B from ABC
-				indices.push_back(verticesIndices.at(*triangleIt->bc->b));  // Insert C from ABC
-			} else {
-				indices.push_back(verticesIndices.at(*triangleIt->bc->b));  // Insert C from ABC
-				indices.push_back(verticesIndices.at(*triangleIt->ab->b));  // Insert B from ABC
+		else if (m_Vertices.size() == 2) {
+			uint32_t otherId = -1;
+			for (const auto&[id,vert] : m_Vertices) {
+				if (id != newVertId) {
+					otherId = id;
+					break;
+				}
 			}
+			if (otherId == -1) return; // Too much safety but is okay.
+			const uint32_t newEdge = GenerateEdgeId();
+			m_Edges[newEdge] = {otherId, newVertId};
 		}
-
-		return {std::move(vertices), std::move(indices)};
 	}
 }

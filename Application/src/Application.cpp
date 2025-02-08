@@ -6,8 +6,11 @@
 #include "TRG/Math.hpp"
 
 #include <raylib.h>
+#include <rlgl.h>
 #include <imgui.h>
 #include <rlImGui.h>
+
+#include "Core/raylibMathHelper.hpp"
 
 using namespace TRG::Literal;
 
@@ -49,7 +52,7 @@ namespace TRG::Application {
 			BeginDrawing();
 			{
 				ClearBackground(GetColor(0x052c46ff));
-				BeginMode3D(m_Scene.GetCamera3D());
+				CustomBegin3D(m_Scene.GetCamera());
 				{
 					DrawGrid(20, 1);
 					RenderScene(ts);
@@ -85,6 +88,26 @@ namespace TRG::Application {
 
 	void Application::RenderImGui(const float ts) {
 		m_Scene.RenderImGui(ts);
+	}
+
+	void Application::CustomBegin3D(const TRG::Application::Camera& camera) {
+		// Initializes 3D mode with custom camera (3D)
+		rlDrawRenderBatchActive();      // Update and draw internal render batch
+
+		rlMatrixMode(RL_PROJECTION);    // Switch to projection matrix
+		rlPushMatrix();                 // Save previous matrix, which contains the settings for the 2d ortho projection
+		rlLoadIdentity();               // Reset current matrix (projection)
+
+		const Mat4 projMatrix = camera.GetProjectionMatrix(m_Width, m_Height, 0.1, 100);
+		rlSetMatrixProjection(Mat4ToRaylib(projMatrix));
+
+		rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
+		rlLoadIdentity();               // Reset current matrix (modelview)
+		const Matrix rlViewMat = Mat4ToRaylib(camera.GetViewMatrix());
+		rlMultMatrixf(MatrixToFloat(rlViewMat));      // Multiply modelview matrix by view matrix (camera)
+
+		rlEnableDepthTest();            // Enable DEPTH_TEST for 3D
+
 	}
 
 	void Application::swap(Application &application) noexcept {
