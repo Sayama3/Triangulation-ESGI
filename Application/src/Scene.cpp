@@ -23,7 +23,8 @@ namespace TRG::Application {
 	}
 
 	Scene::~Scene() {
-		UnloadModel(m_Model);
+		if (IsModelValid(m_Model))
+			UnloadModel(m_Model);
 	}
 
 	Scene::Scene(Scene&& scene) noexcept {
@@ -92,18 +93,19 @@ namespace TRG::Application {
 	void Scene::Render(const float ts) {
 		if (IsModelValid(m_Model)) {
 			DrawModel(m_Model, Vector3(0,0,0), 1.0, Color(180, 180, 180, 255));
+			DrawModelWires(m_Model, Vector3(0,0,0), 1.0, Color(80, 80, 80, 255));
 		}
 		constexpr auto color = Color{ 50, 180, 40, 255};
 		for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
 			const auto& current = m_2DPoints[i];
 			const auto& next = m_2DPoints[(i + 1) % m_2DPoints.size()];
-			DrawSphere(Vector3(current.x, 0, current.y), 0.1, color);
+			DrawSphere(Vector3(current.x, 0, current.y), 0.01, color);
 			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), color);
 		}
 
 		constexpr auto colorMeshGraph = Color{ 150, 180, 40, 255};
 		for (const auto& [vert_id, vert] : m_MeshGraph.m_Vertices) {
-			DrawSphere(Vector3(vert.Position.x, 0, vert.Position.y), 0.1, { 150, 180, 40, 255});
+			DrawSphere(Vector3(vert.Position.x, 0.001, vert.Position.y), 0.01, { 150, 180, 40, 255});
 		}
 		for (const auto& [id, tr] : m_MeshGraph.m_Triangles) {
 			const auto& edgeAB = m_MeshGraph.m_Edges.at(tr.EdgeA);
@@ -114,24 +116,23 @@ namespace TRG::Application {
 			const auto& vertB = m_MeshGraph.m_Vertices.at(edgeAB.VertexB);
 			const auto& vertC = m_MeshGraph.m_Vertices.at((edgeBC.VertexA != edgeAB.VertexA) && (edgeBC.VertexA != edgeAB.VertexB) ? edgeBC.VertexA : edgeBC.VertexB);
 			if (edgeAB.VertexB == edgeBC.VertexA) {
-				DrawTriangle3D(Vector3(vertA.Position.x, 0, vertA.Position.y),Vector3(vertC.Position.x, 0, vertC.Position.y), Vector3(vertB.Position.x, 0, vertB.Position.y), { 187, 225, 50, 255});
+				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 187, 225, 50, 255});
 			} else {
-				DrawTriangle3D(Vector3(vertA.Position.x, 0, vertA.Position.y),Vector3(vertB.Position.x, 0, vertB.Position.y),Vector3(vertC.Position.x, 0, vertC.Position.y), { 187, 225, 50, 255});
+				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertB.Position.x, 0.001, vertB.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), { 187, 225, 50, 255});
 			}
 		}
 		for (const auto& [id, edge] : m_MeshGraph.m_Edges) {
 			const auto& vertA = m_MeshGraph.m_Vertices.at(edge.VertexA);
 			const auto& vertB = m_MeshGraph.m_Vertices.at(edge.VertexB);
 			// void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
-			rlSetLineWidth(3.0f);
-			DrawLine3D(Vector3(vertA.Position.x, 0, vertA.Position.y), Vector3(vertB.Position.x, 0, vertB.Position.y), { 75, 90, 20, 255});
+			DrawLine3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 75, 90, 20, 255});
 		}
 
 		constexpr auto jarvisColor = Color{ 50, 40, 180, 255};
 		for (uint64_t i = 0; i < m_JarvisShell.size(); ++i) {
 			const auto& current = m_JarvisShell[i];
 			const auto& next = m_JarvisShell[(i + 1) % m_JarvisShell.size()];
-			DrawSphere(Vector3(current.x, 0, current.y), 0.1, jarvisColor);
+			DrawSphere(Vector3(current.x, 0, current.y), 0.01, jarvisColor);
 			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), jarvisColor);
 		}
 
@@ -139,16 +140,16 @@ namespace TRG::Application {
 		for (uint64_t i = 0; i < m_GrahamScanShell.size(); ++i) {
 			const auto& current = m_GrahamScanShell[i];
 			const auto& next = m_GrahamScanShell[(i + 1) % m_GrahamScanShell.size()];
-			DrawSphere(Vector3(current.x, 0, current.y), 0.1, GrahamScanColor);
+			DrawSphere(Vector3(current.x, 0, current.y), 0.01, GrahamScanColor);
 			DrawLine3D(Vector3(current.x, 0, current.y), Vector3(next.x, 0, next.y), GrahamScanColor);
 		}
 
 		if (m_Action == Action::AddPoint && PointToAdd.has_value()) {
-			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{180, 50, 40, 150});
+			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.01, Color{180, 50, 40, 150});
 		}
 
 		if (m_Action == Action::AddTriangulatePoint && PointToAdd.has_value()) {
-			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.1, Color{150, 180, 40, 150});
+			DrawSphere(reinterpret<Vector3>(PointToAdd.value()), 0.01, Color{150, 180, 40, 150});
 		}
 
 	}
@@ -164,6 +165,7 @@ namespace TRG::Application {
 		RenderImGuiJarvisShell();
 		RenderImGuiGrahamScanShell();
 	}
+
 	void Scene::RenderImGuiPoints() {
 		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
 		std::vector<uint64_t> toDelete;
@@ -197,20 +199,14 @@ namespace TRG::Application {
 			}
 
 			if (ImGui::Button("Incremental Triangulation")) {
-				 auto [vertices, indices] = Math::IncrementalTriangulation(m_2DPoints.cbegin(), m_2DPoints.cend());
+				const auto vertices = Math::IncrementalTriangulation(m_2DPoints.cbegin(), m_2DPoints.cend(), 0.001);
 				Mesh mesh{};
 				mesh.vertexCount = vertices.size();
-				mesh.triangleCount = indices.size() / 3;
+				mesh.triangleCount = vertices.size() / 3;
+				static_assert(sizeof(float) == sizeof(Real));
 				mesh.vertices = static_cast<float *>(malloc(sizeof(float) * 3 * vertices.size()));
-				mesh.indices = static_cast<unsigned short *>(malloc(sizeof(unsigned short) * indices.size()));
-				for (uint64_t i = 0; i < vertices.size()*3; i+=3) {
-					mesh.vertices[i + 0] = vertices[i].x;
-					mesh.vertices[i + 1] = 0;
-					mesh.vertices[i + 2] = vertices[i].y;
-				}
-				for (uint64_t i = 0; i < indices.size(); ++i) {
-					mesh.indices[i] = indices[i];
-				}
+				std::memcpy(mesh.vertices, vertices.data(), sizeof(float) * 3 * vertices.size());
+				UploadMesh(&mesh, false);
 				m_Model = LoadModelFromMesh(mesh);
 			}
 
@@ -310,15 +306,6 @@ namespace TRG::Application {
 			}
 			ImGui::End();
 			if (!open) m_GrahamScanShell.clear();
-		}
-	}
-
-	void Scene::RenderImGuiMeshGraph() {
-		bool open = !m_MeshGraph.m_Edges.empty();
-		if (open) {
-			ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
-			ImGui::Begin("Mesh Graph", &open);
-			ImGui::End();
 		}
 	}
 

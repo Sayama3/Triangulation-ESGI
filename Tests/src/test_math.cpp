@@ -91,6 +91,29 @@ TEST(MathTest, OrientationTests) {
 	EXPECT_FALSE(TRG::Math::IsTriangleOriented(A, C, B));
 }
 
+TEST(MathTest, TriangleTests) {
+	const Vec2 A{-1,-1};
+	const Vec2 B{1,-1};
+	const Vec2 C{0, 1};
+
+	const Vec2 P_Inside = {0,0};
+	const Vec2 P_Outside = {1,1};
+	const Vec2 P_Outside2 = {-0.25,0.75};
+
+	EXPECT_TRUE(TRG::Math::PointIsInsideTriangle(A, B, C, P_Inside));
+	EXPECT_TRUE(TRG::Math::PointIsInsideTriangle(A, C, B, P_Inside));
+
+	EXPECT_TRUE(TRG::Math::PointIsInsideTriangle(A, B, C, A));
+	EXPECT_TRUE(TRG::Math::PointIsInsideTriangle(A, B, C, B));
+	EXPECT_TRUE(TRG::Math::PointIsInsideTriangle(A, B, C, C));
+
+	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, B, C, P_Outside));
+	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, C, B, P_Outside));
+
+	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, B, C, P_Outside2));
+	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, C, B, P_Outside2));
+}
+
 TEST(MathTest, RayCastTests) {
 	const Plane<Real> plane0{{0,0,0},{0,1,0}};
 	const Ray<3, Real> ray0{{0,1,0},{0,-1,0}};

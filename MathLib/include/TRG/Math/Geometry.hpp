@@ -116,4 +116,22 @@ namespace TRG::Math {
 		center /= static_cast<T>(count);
 		return center;
 	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static bool PointIsInsideTriangle(glm::vec<2,T,Q> a, glm::vec<2,T,Q> b, glm::vec<2,T,Q> c, glm::vec<2,T,Q> p) {
+		if (a == b || a == c || b == c) return false;
+		if (a == p || b == p || c == p) return true;
+
+		{
+			const auto AB = b - a;
+			const auto AC = c - a;
+			if (std::abs(Math::Dot(Math::Normalize(AB), Math::Normalize(AC))) >= 1 - REAL_EPSILON) return false;
+		}
+
+		if (!Math::IsTriangleOriented(a,b,c)) {
+			std::swap(b,c);
+		}
+
+		return Math::IsTriangleOriented(a,b,p) && Math::IsTriangleOriented(b,c,p) && Math::IsTriangleOriented(c,a,p);
+	}
 }

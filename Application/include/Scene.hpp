@@ -41,7 +41,6 @@ namespace TRG::Application {
 		void RenderImGuiCameraInputs();
 		void RenderImGuiJarvisShell();
 		void RenderImGuiGrahamScanShell();
-		void RenderImGuiMeshGraph();
 
 		void RenderImGui(float ts) override;
 		[[nodiscard]] Camera3D GetCamera3D() const;

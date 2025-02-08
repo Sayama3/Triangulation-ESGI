@@ -19,6 +19,7 @@ namespace TRG::Application {
 		SetConfigFlags(FLAG_WINDOW_RESIZABLE); // Window configuration flags
 		InitWindow(width, height, name.c_str());
 		rlImGuiSetup(true); // sets up ImGui with either a dark or light default theme
+		rlSetLineWidth(3.0f);
 		m_Scene.Init();
 	}
 
