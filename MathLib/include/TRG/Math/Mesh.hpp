@@ -53,6 +53,10 @@ namespace TRG::Math {
 	};
 
 	inline void MeshGraph::AddPoint(const Vector2 point) {
+		auto it = std::find_if(m_Vertices.begin(), m_Vertices.end(), [point](std::pair<uint32_t, Vertex> vert) {return vert.second.Position == point;});
+		if (it != m_Vertices.end()) return;
+
+
 		const uint32_t newVertId = GenerateVertexId();
 		m_Vertices[newVertId] = {point};
 
@@ -105,63 +109,79 @@ namespace TRG::Math {
 
 			if (compatibleEdges.empty()) {
 				for (auto&[ABId, edgeAB] : m_Edges) {
-				if (edgeAB.TriangleLeft && edgeAB.TriangleRight) continue;
+					if (edgeAB.TriangleLeft && edgeAB.TriangleRight) continue;
 
-				const auto& vertA = m_Vertices.at(edgeAB.VertexA);
-				const auto& vertB = m_Vertices.at(edgeAB.VertexB);
+					const auto& vertA = m_Vertices.at(edgeAB.VertexA);
+					const auto& vertB = m_Vertices.at(edgeAB.VertexB);
 
-				const auto aToB = vertB.Position - vertA.Position;
-				const auto aToC = point - vertA.Position;
+					const auto aToB = vertB.Position - vertA.Position;
+					const auto aToC = point - vertA.Position;
 
-				const bool isAligned = std::abs(Math::Dot(Math::Normalize(aToB), Math::Normalize(aToC))) >= 1-REAL_EPSILON;
-				if (isAligned) continue;
+					const bool isAligned = std::abs(Math::Dot(Math::Normalize(aToB), Math::Normalize(aToC))) >= 1-REAL_EPSILON;
+					if (isAligned) continue;
 
-				const bool isLeft = Math::IsTriangleOriented(aToB, aToC);
-				if (isLeft && edgeAB.TriangleLeft) continue;
-				if (!isLeft && edgeAB.TriangleRight) continue;
+					const bool isLeft = Math::IsTriangleOriented(aToB, aToC);
+					if (isLeft && edgeAB.TriangleLeft) continue;
+					if (!isLeft && edgeAB.TriangleRight) continue;
 
-				compatibleEdges.push_back(ABId);
-				compatibleVertices.insert(edgeAB.VertexA);
-				compatibleVertices.insert(edgeAB.VertexB);
-			}
-			}
-
-			std::unordered_map<uint32_t, uint32_t> verticeToPromotedVertices;
-			verticeToPromotedVertices.reserve(compatibleVertices.size());
-
-			for (const auto vertId : compatibleVertices) {
-				const auto newEdgeId = GenerateEdgeId();
-				verticeToPromotedVertices[vertId] = newEdgeId;
-				m_Edges[newEdgeId] = {vertId, newVertId};
+					compatibleEdges.push_back(ABId);
+					compatibleVertices.insert(edgeAB.VertexA);
+					compatibleVertices.insert(edgeAB.VertexB);
+				}
 			}
 
-			for (const auto ABId: compatibleEdges) {
-				auto& AB = m_Edges[ABId];
-				const auto BCId = verticeToPromotedVertices[AB.VertexB];
-				const auto ACId = verticeToPromotedVertices[AB.VertexA];
-				auto& BC = m_Edges[BCId];
-				auto& AC = m_Edges[ACId];
+			if (compatibleVertices.empty()) {
+				T distance = 0;
+				uint32_t closest = m_Vertices.begin()->first;
+				for (const auto&[vId, vert] : m_Vertices) {
+					if (vId == newVertId) continue;
+					const auto d = Math::Magnitude(vert.Position - point);
+					if (distance == 0 || d < distance) {
+						closest = vId;
+						distance = d;
+					}
+				}
+				m_Edges[GenerateEdgeId()] = {closest, newVertId};
+			}
+			else
+			{
+				std::unordered_map<uint32_t, uint32_t> verticeToPromotedVertices;
+				verticeToPromotedVertices.reserve(compatibleVertices.size());
 
-				const auto A = m_Vertices[AB.VertexA];
-				const auto B = m_Vertices[AB.VertexB];
-				const auto C = m_Vertices[newVertId];
+				for (const auto vertId : compatibleVertices) {
+					const auto newEdgeId = GenerateEdgeId();
+					verticeToPromotedVertices[vertId] = newEdgeId;
+					m_Edges[newEdgeId] = {vertId, newVertId};
+				}
 
-				if (Math::IsTriangleOriented(A.Position, B.Position, C.Position)) {
-					const auto ABCId = GenerateTriangleId();
-					const auto ABC = Triangle{ABId, BCId, ACId};
-					m_Triangles[ABCId] = ABC;
+				for (const auto ABId: compatibleEdges) {
+					auto& AB = m_Edges[ABId];
+					const auto BCId = verticeToPromotedVertices[AB.VertexB];
+					const auto ACId = verticeToPromotedVertices[AB.VertexA];
+					auto& BC = m_Edges[BCId];
+					auto& AC = m_Edges[ACId];
 
-					AB.TriangleLeft = ABCId;
-					BC.TriangleLeft = ABCId;
-					AC.TriangleRight = ABCId;
-				} else {
-					const auto ABCId = GenerateTriangleId();
-					const auto ABC = Triangle{ABId, ACId, BCId};
-					m_Triangles[ABCId] = ABC;
+					const auto A = m_Vertices[AB.VertexA];
+					const auto B = m_Vertices[AB.VertexB];
+					const auto C = m_Vertices[newVertId];
 
-					AB.TriangleRight = ABCId;
-					BC.TriangleRight = ABCId;
-					AC.TriangleLeft = ABCId;
+					if (Math::IsTriangleOriented(A.Position, B.Position, C.Position)) {
+						const auto ABCId = GenerateTriangleId();
+						const auto ABC = Triangle{ABId, BCId, ACId};
+						m_Triangles[ABCId] = ABC;
+
+						AB.TriangleLeft = ABCId;
+						BC.TriangleLeft = ABCId;
+						AC.TriangleRight = ABCId;
+					} else {
+						const auto ABCId = GenerateTriangleId();
+						const auto ABC = Triangle{ABId, ACId, BCId};
+						m_Triangles[ABCId] = ABC;
+
+						AB.TriangleRight = ABCId;
+						BC.TriangleRight = ABCId;
+						AC.TriangleLeft = ABCId;
+					}
 				}
 			}
 		}
