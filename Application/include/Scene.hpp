@@ -95,8 +95,8 @@ namespace TRG::Application {
 
 		KeyboardKey m_ForwardKey = KeyboardKey::KEY_W;
 		KeyboardKey m_BackwardKey = KeyboardKey::KEY_S;
-		KeyboardKey m_RightKey = KeyboardKey::KEY_A;
-		KeyboardKey m_LeftKey = KeyboardKey::KEY_D;
+		KeyboardKey m_RightKey = KeyboardKey::KEY_D;
+		KeyboardKey m_LeftKey = KeyboardKey::KEY_A;
 		KeyboardKey m_UpKey = KeyboardKey::KEY_E;
 		KeyboardKey m_DownKey = KeyboardKey::KEY_Q;
 		KeyboardKey m_RotateRightKey = KeyboardKey::KEY_RIGHT;
