@@ -258,7 +258,7 @@ namespace TRG::Application {
 			{
 				ImGui::BeginDisabled(m_Action != Action::None);
 				ImGuiLib::ComboMouseButton("Add Point Key", &m_AddPoint);
-				ImGuiLib::ComboMouseButton("Add Triangulation Key", &m_AddPoint);
+				ImGuiLib::ComboMouseButton("Add Triangulation Key", &m_AddTriangulationPoint);
 				ImGuiLib::ComboMouseButton("FreeCam Key", &m_EnterFpsKey);
 				ImGui::Spacing();
 				ImGuiLib::ComboKeyboardKey("Forward Key", &m_ForwardKey);
