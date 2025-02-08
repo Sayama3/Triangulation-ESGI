@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <rcamera.h>
 #include <rlImGui.h>
+#include <rlgl.h>
 #include <Core/Reinterpreter.hpp>
 
 #include "Application.hpp"
@@ -104,11 +105,6 @@ namespace TRG::Application {
 		for (const auto& [vert_id, vert] : m_MeshGraph.m_Vertices) {
 			DrawSphere(Vector3(vert.Position.x, 0, vert.Position.y), 0.1, { 150, 180, 40, 255});
 		}
-		for (const auto& [id, edge] : m_MeshGraph.m_Edges) {
-			const auto& vertA = m_MeshGraph.m_Vertices.at(edge.VertexA);
-			const auto& vertB = m_MeshGraph.m_Vertices.at(edge.VertexB);
-			DrawLine3D(Vector3(vertA.Position.x, 0, vertA.Position.y), Vector3(vertB.Position.x, 0, vertB.Position.y), { 75, 90, 20, 255});
-		}
 		for (const auto& [id, tr] : m_MeshGraph.m_Triangles) {
 			const auto& edgeAB = m_MeshGraph.m_Edges.at(tr.EdgeA);
 			const auto& edgeBC = m_MeshGraph.m_Edges.at(tr.EdgeB);
@@ -118,10 +114,17 @@ namespace TRG::Application {
 			const auto& vertB = m_MeshGraph.m_Vertices.at(edgeAB.VertexB);
 			const auto& vertC = m_MeshGraph.m_Vertices.at((edgeBC.VertexA != edgeAB.VertexA) && (edgeBC.VertexA != edgeAB.VertexB) ? edgeBC.VertexA : edgeBC.VertexB);
 			if (edgeAB.VertexB == edgeBC.VertexA) {
-				DrawTriangle3D(Vector3(vertA.Position.x, 0, vertA.Position.y),Vector3(vertB.Position.x, 0, vertB.Position.y),Vector3(vertC.Position.x, 0, vertC.Position.y), { 187, 225, 50, 255});
-			} else {
 				DrawTriangle3D(Vector3(vertA.Position.x, 0, vertA.Position.y),Vector3(vertC.Position.x, 0, vertC.Position.y), Vector3(vertB.Position.x, 0, vertB.Position.y), { 187, 225, 50, 255});
+			} else {
+				DrawTriangle3D(Vector3(vertA.Position.x, 0, vertA.Position.y),Vector3(vertB.Position.x, 0, vertB.Position.y),Vector3(vertC.Position.x, 0, vertC.Position.y), { 187, 225, 50, 255});
 			}
+		}
+		for (const auto& [id, edge] : m_MeshGraph.m_Edges) {
+			const auto& vertA = m_MeshGraph.m_Vertices.at(edge.VertexA);
+			const auto& vertB = m_MeshGraph.m_Vertices.at(edge.VertexB);
+			// void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
+			rlSetLineWidth(3.0f);
+			DrawLine3D(Vector3(vertA.Position.x, 0, vertA.Position.y), Vector3(vertB.Position.x, 0, vertB.Position.y), { 75, 90, 20, 255});
 		}
 
 		constexpr auto jarvisColor = Color{ 50, 40, 180, 255};
