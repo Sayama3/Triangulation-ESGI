@@ -13,6 +13,7 @@ set(APP_SRC_FILES
 		src/Render/EditorCamera.cpp
 		include/Render/EditorCamera.hpp
 		src/ImGuiLib_RaylibInputs.cpp
+		include/Core/raylibMathHelper.hpp
 )
 
 add_executable(${PROJECT_NAME} ${APP_SRC_FILES})

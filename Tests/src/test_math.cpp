@@ -83,6 +83,14 @@ TEST(MathTest, BasicVectorTests) {
 	// EXPECT_REAL_EQ(TRG::Math::SignedAngle(Vec3{0,0,1}, Vec3(0,-1,1),{1,0,0}) * rad2deg, 45_r);
 }
 
+TEST(MathTest, OrientationTests) {
+	const Vec2 A{0,0};
+	const Vec2 B{0,1};
+	const Vec2 C{-1,0};
+	EXPECT_TRUE(TRG::Math::IsTriangleOriented(A, B, C));
+	EXPECT_FALSE(TRG::Math::IsTriangleOriented(A, C, B));
+}
+
 TEST(MathTest, RayCastTests) {
 	const Plane<Real> plane0{{0,0,0},{0,1,0}};
 	const Ray<3, Real> ray0{{0,1,0},{0,-1,0}};

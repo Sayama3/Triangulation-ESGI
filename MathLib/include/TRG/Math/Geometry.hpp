@@ -32,8 +32,8 @@ namespace TRG::Math {
 	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
 	inline static bool IsTriangleOriented(const glm::vec<2,T,Q>& AB, const glm::vec<2,T,Q>& AC) {
 		return Determinant(glm::mat<2,2,T,Q>{
-			AB,
-			AC,
+			AB.x, AB.y,
+			AC.x, AC.y,
 		}) > 0;
 	}
 

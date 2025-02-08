@@ -23,6 +23,6 @@ namespace TRG::Application {
 		Real SensitivityX = 0.001;
 		Real SensitivityY = 0.001;
 		bool InverseX = false;
-		bool InverseY = false;
+		bool InverseY = true;
 	};
 }

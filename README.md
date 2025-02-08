@@ -11,7 +11,7 @@ We've made it using :
 - [glm](https://github.com/g-truc/glm)
 
 The goals are :
-- [ ] Be able to make a 2D convex envelope of a point cloud.
+- [X] Be able to make a 2D convex envelope of a point cloud.
 - [ ] Be able to triangulate the 2D point cloud.
 - [ ] Use Delaunay method to triangulate the point cloud
 - [ ] Create a 2D Voronoi Diagram
