@@ -8,6 +8,36 @@
 #include <queue>
 
 namespace TRG::Math {
+
+	template<typename T, typename U>
+	struct ReversiblePair {
+	public:
+		ReversiblePair() = default;
+		~ReversiblePair() = default;
+		ReversiblePair(const T& f, const U& s) : first(f), second(s) {}
+	public:
+		T first;
+		U second;
+
+		[[nodiscard]] bool operator==(const ReversiblePair& other) const {
+			return  (first == other.first && second == other.second) ||
+					(first == other.second && second == other.first) ;
+		}
+		[[nodiscard]] bool operator!=(const ReversiblePair& other) const {
+			return !(*this == other);
+		}
+	};
+
+	struct ReversiblePairHash {
+	public:
+		template <typename T, typename U>
+		std::size_t operator()(const ReversiblePair<T, U>& x) const
+		{
+			return std::hash<T>()(x.first) ^ std::hash<U>()(x.second);
+		}
+	};
+
+
 	class MeshGraph {
 	public:
 		using T = Real;
@@ -279,7 +309,7 @@ namespace TRG::Math {
 
 	inline void MeshGraph::ReverseEdge(const uint32_t edgeId) {
 		if (!m_Edges.contains(edgeId)) return;
-		Edge& edge = m_Edges.at(edgeId);
+		const Edge& edge = m_Edges.at(edgeId);
 		if (!edge.TriangleLeft || !edge.TriangleRight) return;
 
 		const auto t1Id = edge.TriangleLeft.value();
@@ -287,6 +317,15 @@ namespace TRG::Math {
 
 		if (!m_Triangles.contains(t1Id)) return;
 		if (!m_Triangles.contains(t2Id)) return;
+
+
+		const uint32_t s2Id = edge.VertexA;
+		const uint32_t s1Id = edge.VertexB;
+		const Vertex& s1 = m_Vertices.at(s1Id);
+		const Vertex& s2 = m_Vertices.at(s2Id);
+
+		std::unordered_map<ReversiblePair<uint32_t, uint32_t>, std::pair<uint32_t, Edge*>, ReversiblePairHash> VertexPairToEdge;
+		VertexPairToEdge[ReversiblePair{s1Id, s2Id}] = {edgeId, &m_Edges.at(edgeId)};
 
 		Triangle& t1 = m_Triangles.at(t1Id);
 		Triangle& t2 = m_Triangles.at(t2Id);
@@ -317,27 +356,73 @@ namespace TRG::Math {
 			a2Id = t2.EdgeBC;
 		}
 
-		const uint32_t s2Id = edge.VertexA;
-		const uint32_t s1Id = edge.VertexB;
-
-		const Edge& a1 = m_Edges.at(a1Id);
+		Edge& a1 = m_Edges.at(a1Id);
 		Edge& a4 = m_Edges.at(a4Id);
 		const uint32_t s4Id = a1.VertexA == s1Id || a1.VertexA == s2Id ? a1.VertexB : a1.VertexA;
 
-		const Edge& a2 = m_Edges.at(a2Id);
+		Edge& a2 = m_Edges.at(a2Id);
 		Edge& a3 = m_Edges.at(a3Id);
 		const uint32_t s3Id = a2.VertexA == s1Id || a2.VertexA == s2Id ? a2.VertexB : a2.VertexA;
 
+		VertexPairToEdge[ReversiblePair{a1.VertexA, a1.VertexB}] = {a1Id, &m_Edges.at(a1Id)};
+		VertexPairToEdge[ReversiblePair{a4.VertexA, a4.VertexB}] = {a4Id, &m_Edges.at(a4Id)};
+		VertexPairToEdge[ReversiblePair{a2.VertexA, a2.VertexB}] = {a2Id, &m_Edges.at(a2Id)};
+		VertexPairToEdge[ReversiblePair{a3.VertexA, a3.VertexB}] = {a3Id, &m_Edges.at(a3Id)};
+
+		const Vertex& s3 = m_Vertices.at(s3Id);
+		const Vertex& s4 = m_Vertices.at(s4Id);
+
+		VertexPairToEdge[{s3Id, s4Id}] = {edgeId, &m_Edges.at(edgeId)};
+
+		if (Math::IsTriangleOriented(s2.Position, s3.Position, s4.Position)) {
+			// T1 = s2-s3-s4
+			t1 = {VertexPairToEdge.at(ReversiblePair{s2Id, s3Id}).first, VertexPairToEdge.at(ReversiblePair{s3Id, s4Id}).first, VertexPairToEdge.at(ReversiblePair{s4Id, s2Id}).first};
+
+			auto& t1AB = *VertexPairToEdge.at(ReversiblePair{s2Id, s3Id}).second;
+			if(t1AB.TriangleLeft == t1Id || t1AB.TriangleLeft == t2Id) {t1AB.TriangleLeft = t1Id;}
+			else if(t1AB.TriangleRight == t1Id || t1AB.TriangleRight == t2Id) {t1AB.TriangleRight = t1Id;}
+
+			auto& t1CA = *VertexPairToEdge.at(ReversiblePair{s4Id, s2Id}).second;
+			if(t1CA.TriangleLeft == t1Id || t1CA.TriangleLeft == t2Id) {t1CA.TriangleLeft = t1Id;}
+			else if(t1CA.TriangleRight == t1Id || t1CA.TriangleRight == t2Id) {t1CA.TriangleRight = t1Id;}
 
 
-		if (a4.TriangleLeft == t1Id) a4.TriangleLeft = t2Id;
-		else  a4.TriangleRight = t2Id;
+			// T2 s4-s3-s1
+			t2 = {VertexPairToEdge.at(ReversiblePair{s4Id, s3Id}).first, VertexPairToEdge.at(ReversiblePair{s3Id, s1Id}).first, VertexPairToEdge.at(ReversiblePair{s1Id, s4Id}).first};
 
-		if (a3.TriangleLeft == t2Id) a3.TriangleLeft = t1Id;
-		else a3.TriangleRight = t1Id;
+			auto& t2BC = *VertexPairToEdge.at(ReversiblePair{s3Id, s1Id}).second;
+			if(t2BC.TriangleLeft == t1Id || t2BC.TriangleLeft == t2Id) {t2BC.TriangleLeft = t2Id;}
+			else if(t2BC.TriangleRight == t1Id || t2BC.TriangleRight == t2Id) {t2BC.TriangleRight = t2Id;}
 
-		edge = {s3Id, s4Id, t2Id,t1Id};
-		t1 = {edgeId, a2Id, a1Id};
-		t2 = {edgeId, a4Id, a3Id};
+			auto& t2CA = *VertexPairToEdge.at(ReversiblePair{s1Id, s4Id}).second;
+			if(t2CA.TriangleLeft == t1Id || t2CA.TriangleLeft == t2Id) {t2CA.TriangleLeft = t2Id;}
+			else if(t2CA.TriangleRight == t1Id || t2CA.TriangleRight == t2Id) {t2CA.TriangleRight = t2Id;}
+
+			m_Edges[edgeId] = {s3Id, s4Id, t1Id, t2Id};
+		} else {
+			// T1 s1-s3-s4
+			t1 = {VertexPairToEdge.at(ReversiblePair{s1Id, s3Id}).first, VertexPairToEdge.at(ReversiblePair{s3Id, s4Id}).first, VertexPairToEdge.at(ReversiblePair{s4Id, s1Id}).first};
+
+			auto& t2BC = *VertexPairToEdge.at(ReversiblePair{s1Id, s3Id}).second;
+			if(t2BC.TriangleLeft == t1Id || t2BC.TriangleLeft == t2Id) {t2BC.TriangleLeft = t1Id;}
+			else if(t2BC.TriangleRight == t1Id || t2BC.TriangleRight == t2Id) {t2BC.TriangleRight = t1Id;}
+
+			auto& t2CA = *VertexPairToEdge.at(ReversiblePair{s4Id, s1Id}).second;
+			if(t2CA.TriangleLeft == t1Id || t2CA.TriangleLeft == t2Id) {t2CA.TriangleLeft = t1Id;}
+			else if(t2CA.TriangleRight == t1Id || t2CA.TriangleRight == t2Id) {t2CA.TriangleRight = t1Id;}
+
+			// T2 s2-s4-s3
+			t2 = {VertexPairToEdge.at(ReversiblePair{s2Id, s4Id}).first, VertexPairToEdge.at(ReversiblePair{s4Id, s3Id}).first, VertexPairToEdge.at(ReversiblePair{s3Id, s2Id}).first};
+
+			auto& t1AB = *VertexPairToEdge.at(ReversiblePair{s3Id, s2Id}).second;
+			if(t1AB.TriangleLeft == t1Id || t1AB.TriangleLeft == t2Id) {t1AB.TriangleLeft = t2Id;}
+			else if(t1AB.TriangleRight == t1Id || t1AB.TriangleRight == t2Id) {t1AB.TriangleRight = t2Id;}
+
+			auto& t1CA = *VertexPairToEdge.at(ReversiblePair{s2Id, s4Id}).second;
+			if(t1CA.TriangleLeft == t1Id || t1CA.TriangleLeft == t2Id) {t1CA.TriangleLeft = t2Id;}
+			else if(t1CA.TriangleRight == t1Id || t1CA.TriangleRight == t2Id) {t1CA.TriangleRight = t2Id;}
+
+			m_Edges[edgeId] = {s3Id, s4Id, t1Id, t2Id};
+		}
 	}
 }
