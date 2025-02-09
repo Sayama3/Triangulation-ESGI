@@ -17,21 +17,21 @@ namespace TRG::Math {
 		mesh.reserve(meshGraph.m_Triangles.size() * 3);
 		for (const auto&[trId, ABC] : meshGraph.m_Triangles) {
 			const auto& AB = meshGraph.m_Edges.at(ABC.EdgeAB);
-			const auto& MaybeBC = meshGraph.m_Edges.at(ABC.EdgeBC);
+			const auto& secondEdge = meshGraph.m_Edges.at(ABC.EdgeBC);
 
 			const auto& A = meshGraph.m_Vertices.at(AB.VertexA);
 			const auto& B = meshGraph.m_Vertices.at(AB.VertexB);
-			const auto& C = meshGraph.m_Vertices.at(MaybeBC.VertexB);
+			const bool AisInOtherEdge = secondEdge.VertexA == AB.VertexA || secondEdge.VertexB == AB.VertexA;
+			const auto& C = meshGraph.m_Vertices.at(secondEdge.VertexA == AB.VertexA || secondEdge.VertexA == AB.VertexB ? secondEdge.VertexB : secondEdge.VertexA);
 
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
-				mesh.push_back(A.Position);
+			if (AisInOtherEdge) {
 				mesh.push_back(B.Position);
+				mesh.push_back(A.Position);
 				mesh.push_back(C.Position);
 			} else {
 				mesh.push_back(A.Position);
-				mesh.push_back(C.Position);
 				mesh.push_back(B.Position);
+				mesh.push_back(C.Position);
 			}
 		}
 		return mesh;
@@ -42,20 +42,20 @@ namespace TRG::Math {
 		mesh.reserve(meshGraph.m_Triangles.size() * 3);
 		for (const auto&[trId, ABC] : meshGraph.m_Triangles) {
 			const auto& AB = meshGraph.m_Edges.at(ABC.EdgeAB);
-			const auto& MaybeBC = meshGraph.m_Edges.at(ABC.EdgeBC);
+			const auto& secondEdge = meshGraph.m_Edges.at(ABC.EdgeBC);
 
 			const auto& A = meshGraph.m_Vertices.at(AB.VertexA);
 			const auto& B = meshGraph.m_Vertices.at(AB.VertexB);
-			const auto& C = meshGraph.m_Vertices.at(MaybeBC.VertexB);
+			const bool AisInOtherEdge = secondEdge.VertexA == AB.VertexA || secondEdge.VertexB == AB.VertexA;
+			const auto& C = meshGraph.m_Vertices.at(secondEdge.VertexA == AB.VertexA || secondEdge.VertexA == AB.VertexB ? secondEdge.VertexB : secondEdge.VertexA);
 
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
+			if (AisInOtherEdge) {
 				mesh.push_back(MeshGraph::Vector3{A.Position.x, y, A.Position.y});
+				mesh.push_back(MeshGraph::Vector3{B.Position.x, y, B.Position.y});
 				mesh.push_back(MeshGraph::Vector3{C.Position.x, y, C.Position.y});
-				mesh.push_back(MeshGraph::Vector3{B.Position.x, y, B.Position.y});
 			} else {
-				mesh.push_back(MeshGraph::Vector3{A.Position.x, y, A.Position.y});
 				mesh.push_back(MeshGraph::Vector3{B.Position.x, y, B.Position.y});
+				mesh.push_back(MeshGraph::Vector3{A.Position.x, y, A.Position.y});
 				mesh.push_back(MeshGraph::Vector3{C.Position.x, y, C.Position.y});
 			}
 		}
@@ -67,21 +67,21 @@ namespace TRG::Math {
 		mesh.reserve(meshGraph.m_Triangles.size() * 3);
 		for (const auto&[trId, ABC] : meshGraph.m_Triangles) {
 			const auto& AB = meshGraph.m_Edges.at(ABC.EdgeAB);
-			const auto& MaybeBC = meshGraph.m_Edges.at(ABC.EdgeBC);
+			const auto& secondEdge = meshGraph.m_Edges.at(ABC.EdgeBC);
 
 			const auto& A = meshGraph.m_Vertices.at(AB.VertexA);
 			const auto& B = meshGraph.m_Vertices.at(AB.VertexB);
-			const auto& C = meshGraph.m_Vertices.at(MaybeBC.VertexB);
+			const bool AisInOtherEdge = secondEdge.VertexA == AB.VertexA || secondEdge.VertexB == AB.VertexA;
+			const auto& C = meshGraph.m_Vertices.at(secondEdge.VertexA == AB.VertexA || secondEdge.VertexA == AB.VertexB ? secondEdge.VertexB : secondEdge.VertexA);
 
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
-				mesh.push_back(MeshGraph::Vector3{A.Position.x, A.Position.y, z});
+			if (AisInOtherEdge) {
 				mesh.push_back(MeshGraph::Vector3{B.Position.x, B.Position.y, z});
+				mesh.push_back(MeshGraph::Vector3{A.Position.x, A.Position.y, z});
 				mesh.push_back(MeshGraph::Vector3{C.Position.x, C.Position.y, z});
 			} else {
 				mesh.push_back(MeshGraph::Vector3{A.Position.x, A.Position.y, z});
-				mesh.push_back(MeshGraph::Vector3{C.Position.x, C.Position.y, z});
 				mesh.push_back(MeshGraph::Vector3{B.Position.x, B.Position.y, z});
+				mesh.push_back(MeshGraph::Vector3{C.Position.x, C.Position.y, z});
 			}
 		}
 		return mesh;

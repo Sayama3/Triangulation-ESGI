@@ -114,8 +114,9 @@ namespace TRG::Application {
 
 			const auto& vertA = m_MeshGraph.m_Vertices.at(edgeAB.VertexA);
 			const auto& vertB = m_MeshGraph.m_Vertices.at(edgeAB.VertexB);
+			const bool BisInOtherEdge = edgeBC.VertexA == edgeAB.VertexB || edgeBC.VertexB == edgeAB.VertexB;
 			const auto& vertC = m_MeshGraph.m_Vertices.at((edgeBC.VertexA != edgeAB.VertexA) && (edgeBC.VertexA != edgeAB.VertexB) ? edgeBC.VertexA : edgeBC.VertexB);
-			if (edgeAB.VertexB == edgeBC.VertexA) {
+			if (BisInOtherEdge) {
 				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 187, 225, 50, 255});
 			} else {
 				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertB.Position.x, 0.001, vertB.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), { 187, 225, 50, 255});
