@@ -25,17 +25,13 @@ namespace TRG::Math {
 		};
 
 		struct Triangle {
-			uint32_t EdgeA;
-			uint32_t EdgeB;
-			uint32_t EdgeC;
+			uint32_t EdgeAB;
+			uint32_t EdgeBC;
+			uint32_t EdgeCA;
 		};
 	public:
 		void AddPoint(Vector2 point);
-		void RemovePoint(uint32_t pointId);
-
-		std::vector<Vector2> ToMesh2D();
-		std::vector<Vector3> ToMesh3DXZ(T Y = 0);
-		std::vector<Vector3> ToMesh3DXY(T Z = 0);
+		void DelaunayTriangulation();
 	public:
 		void clear();
 	private:
@@ -71,9 +67,9 @@ namespace TRG::Math {
 			// Check if inside
 			for (auto [trId, ABC] : m_Triangles) {
 
-				Edge& AB = m_Edges[ABC.EdgeA];
-				Edge& secondEdge = m_Edges[ABC.EdgeB];
-				Edge& thirdEdge = m_Edges[ABC.EdgeC];
+				Edge& AB = m_Edges[ABC.EdgeAB];
+				Edge& secondEdge = m_Edges[ABC.EdgeBC];
+				Edge& thirdEdge = m_Edges[ABC.EdgeCA];
 
 				const uint32_t aId = AB.VertexA;
 				const uint32_t bId = AB.VertexB;
@@ -100,9 +96,9 @@ namespace TRG::Math {
 					if(thirdEdge.TriangleLeft == trId) thirdEdge.TriangleLeft = std::nullopt;
 					else thirdEdge.TriangleRight = std::nullopt;
 
-					compatibleEdges.push_back(ABC.EdgeA);
-					compatibleEdges.push_back(ABC.EdgeB);
-					compatibleEdges.push_back(ABC.EdgeC);
+					compatibleEdges.push_back(ABC.EdgeAB);
+					compatibleEdges.push_back(ABC.EdgeBC);
+					compatibleEdges.push_back(ABC.EdgeCA);
 					break;
 				}
 			}
@@ -199,79 +195,8 @@ namespace TRG::Math {
 		}
 	}
 
-	inline std::vector<typename MeshGraph::Vector2> MeshGraph::ToMesh2D() {
-		std::vector<MeshGraph::Vector2> mesh;
-		mesh.reserve(m_Triangles.size() * 3);
-		for (const auto&[trId, ABC] : m_Triangles) {
-			const auto& AB = m_Edges[ABC.EdgeA];
-			const auto& MaybeBC = m_Edges[ABC.EdgeB];
+	inline void MeshGraph::DelaunayTriangulation() {
 
-			const auto& A = m_Vertices[AB.VertexA];
-			const auto& B = m_Vertices[AB.VertexB];
-			const auto& C = m_Vertices[MaybeBC.VertexB];
-
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
-				mesh.push_back(A.Position);
-				mesh.push_back(B.Position);
-				mesh.push_back(C.Position);
-			} else {
-				mesh.push_back(A.Position);
-				mesh.push_back(C.Position);
-				mesh.push_back(B.Position);
-			}
-		}
-		return mesh;
-	}
-
-	inline std::vector<typename MeshGraph::Vector3> MeshGraph::ToMesh3DXZ(T y) {
-		std::vector<MeshGraph::Vector3> mesh;
-		mesh.reserve(m_Triangles.size() * 3);
-		for (const auto&[trId, ABC] : m_Triangles) {
-			const auto& AB = m_Edges[ABC.EdgeA];
-			const auto& MaybeBC = m_Edges[ABC.EdgeB];
-
-			const auto& A = m_Vertices[AB.VertexA];
-			const auto& B = m_Vertices[AB.VertexB];
-			const auto& C = m_Vertices[MaybeBC.VertexB];
-
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
-				mesh.push_back(Vector3{A.Position.x, y, A.Position.y});
-				mesh.push_back(Vector3{C.Position.x, y, C.Position.y});
-				mesh.push_back(Vector3{B.Position.x, y, B.Position.y});
-			} else {
-				mesh.push_back(Vector3{A.Position.x, y, A.Position.y});
-				mesh.push_back(Vector3{B.Position.x, y, B.Position.y});
-				mesh.push_back(Vector3{C.Position.x, y, C.Position.y});
-			}
-		}
-		return mesh;
-	}
-
-	inline std::vector<typename MeshGraph::Vector3> MeshGraph::ToMesh3DXY(T z) {
-		std::vector<MeshGraph::Vector3> mesh;
-		mesh.reserve(m_Triangles.size() * 3);
-		for (const auto&[trId, ABC] : m_Triangles) {
-			const auto& AB = m_Edges[ABC.EdgeA];
-			const auto& MaybeBC = m_Edges[ABC.EdgeB];
-
-			const auto& A = m_Vertices[AB.VertexA];
-			const auto& B = m_Vertices[AB.VertexB];
-			const auto& C = m_Vertices[MaybeBC.VertexB];
-
-			const bool isOriented = Math::IsTriangleOriented(A.Position, B.Position, C.Position);
-			if (isOriented) {
-				mesh.push_back(Vector3{A.Position.x, A.Position.y, z});
-				mesh.push_back(Vector3{B.Position.x, B.Position.y, z});
-				mesh.push_back(Vector3{C.Position.x, C.Position.y, z});
-			} else {
-				mesh.push_back(Vector3{A.Position.x, A.Position.y, z});
-				mesh.push_back(Vector3{C.Position.x, C.Position.y, z});
-				mesh.push_back(Vector3{B.Position.x, B.Position.y, z});
-			}
-		}
-		return mesh;
 	}
 
 	inline void MeshGraph::clear() {

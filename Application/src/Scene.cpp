@@ -108,8 +108,8 @@ namespace TRG::Application {
 			DrawSphere(Vector3(vert.Position.x, 0.001, vert.Position.y), 0.01, { 150, 180, 40, 255});
 		}
 		for (const auto& [id, tr] : m_MeshGraph.m_Triangles) {
-			const auto& edgeAB = m_MeshGraph.m_Edges.at(tr.EdgeA);
-			const auto& edgeBC = m_MeshGraph.m_Edges.at(tr.EdgeB);
+			const auto& edgeAB = m_MeshGraph.m_Edges.at(tr.EdgeAB);
+			const auto& edgeBC = m_MeshGraph.m_Edges.at(tr.EdgeBC);
 			// const auto& edgeAC = m_MeshGraph.m_Edges.at(tr.EdgeC);
 
 			const auto& vertA = m_MeshGraph.m_Vertices.at(edgeAB.VertexA);
