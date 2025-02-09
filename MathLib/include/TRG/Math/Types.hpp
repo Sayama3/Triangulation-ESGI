@@ -89,6 +89,29 @@ namespace TRG {
 		glm::vec<3,T,Q> Origin;
 		glm::vec<3,T,Q> Normal;
 	};
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	struct Circle {
+		using Vector = glm::vec<2,T,Q>;
+		Circle() = default;
+		~Circle() = default;
+		Circle(const glm::vec<2,T,Q>& center, T radius) : Center{center}, Radius{radius} {}
+
+		glm::vec<2,T,Q> Center;
+		T Radius;
+	};
+
+	template<typename T = Real, glm::qualifier Q = glm::qualifier::defaultp>
+	struct Sphere {
+		using Vector = glm::vec<3,T,Q>;
+		Sphere() = default;
+		~Sphere() = default;
+		Sphere(const glm::vec<3,T,Q>& center, T radius) : Center{center}, Radius{radius} {}
+
+		glm::vec<3,T,Q> Center;
+		T Radius;
+	};
+
 }
 
 namespace TRG {

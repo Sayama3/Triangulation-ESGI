@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Basics.hpp"
+#include <stdexcept>
 
 namespace TRG::Math {
 
@@ -134,4 +135,84 @@ namespace TRG::Math {
 
 		return Math::IsTriangleOriented(a,b,p) && Math::IsTriangleOriented(b,c,p) && Math::IsTriangleOriented(c,a,p);
 	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::vec<3,T,Q> GetSphereCenter(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c) {
+		const glm::vec<3,T,Q> cross_abbc = Math::Cross(a - b, b - c);
+		const T divider = static_cast<T>(2) * Math::Magnitude2(cross_abbc);
+
+		const T alpha = (Math::Magnitude2(b - c) * Math::Dot(a - b, a - c)) / divider;
+		const T beta = (Math::Magnitude2(a - c) * Math::Dot(b - a, b - c)) / divider;
+		const T gamma = (Math::Magnitude2(a - b) * Math::Dot(c - a, c - b)) / divider;
+
+		return a * alpha + b * beta + c * gamma;
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T GetSphereRadius(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c) {
+		const glm::vec<3,T,Q> cross_abbc = Math::Cross(a - b, b - c);
+		const T divider = static_cast<T>(2) * Math::Magnitude(cross_abbc);
+		const T radius = (Math::Magnitude(a - b) * Math::Magnitude(b - c) * Math::Magnitude(c - a)) / divider;
+		return radius;
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static Sphere<T,Q> GetSphere(const glm::vec<3,T,Q>& a, const glm::vec<3,T,Q>& b, const glm::vec<3,T,Q>& c) {
+		const glm::vec<3,T,Q> cross_abbc = Math::Cross(a - b, b - c);
+		const T mag2_cross_abbc = Math::Magnitude2(cross_abbc);
+		const T mag_cross_abbc = std::sqrt(mag2_cross_abbc);
+		const T divider_rad = static_cast<T>(2) * std::sqrt(mag2_cross_abbc);
+		const T divider_ct = static_cast<T>(2) * mag2_cross_abbc;
+
+		const T alpha = (Math::Magnitude2(b - c) * Math::Dot(a - b, a - c)) / divider_ct;
+		const T beta = (Math::Magnitude2(a - c) * Math::Dot(b - a, b - c)) / divider_ct;
+		const T gamma = (Math::Magnitude2(a - b) * Math::Dot(c - a, c - b)) / divider_ct;
+
+		const T radius = (Math::Magnitude(a-b) * Math::Magnitude(b-c) * Math::Magnitude(c-a)) / divider_rad;
+		return Sphere{a * alpha + b * beta + c * gamma, radius};
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static glm::vec<2,T,Q> GetCircleCenter(const glm::vec<2,T,Q>& a, const glm::vec<2,T,Q>& b, const glm::vec<2,T,Q>& c) {
+		const auto ba = a - b;
+		const auto cb = b - c;
+		const auto ca = a - c;
+		const T mag_cross_abbc = ba.x * cb.y - cb.x * ba.y; // Just the Z component of the Cross Product.
+		const T divider_ct = static_cast<T>(2) * mag_cross_abbc * mag_cross_abbc;
+
+		const T alpha = (Math::Magnitude2(cb) * Math::Dot(ba, ca)) / divider_ct;
+		const T beta = (Math::Magnitude2(ca) * Math::Dot(b - a, cb)) / divider_ct;
+		const T gamma = (Math::Magnitude2(ba) * Math::Dot(c - a, c - b)) / divider_ct;
+
+		return (a * alpha) + (b * beta) + (c * gamma);
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static T GetCircleRadius(const glm::vec<2,T,Q>& a, const glm::vec<2,T,Q>& b, const glm::vec<2,T,Q>& c) {
+		const auto ba = a - b;
+		const auto cb = b - c;
+		const T mag_cross_abbc = ba.x * cb.y - cb.x * ba.y; // Just the Z component of the Cross Product.
+		const T divider_rad = static_cast<T>(2) * mag_cross_abbc;
+
+		const T radius = (Math::Magnitude(a-b) * Math::Magnitude(b-c) * Math::Magnitude(c-a)) / divider_rad;
+		return radius;
+	}
+
+	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
+	inline static Circle<T,Q> GetCircle(const glm::vec<2,T,Q>& a, const glm::vec<2,T,Q>& b, const glm::vec<2,T,Q>& c) {
+		const auto ba = a - b;
+		const auto cb = b - c;
+		const auto ca = a - c;
+		const T mag_cross_abbc = ba.x * cb.y - cb.x * ba.y; // Just the Z component of the Cross Product.
+		const T divider_rad = static_cast<T>(2) * mag_cross_abbc;
+		const T divider_ct = static_cast<T>(2) * mag_cross_abbc * mag_cross_abbc;
+
+		const T alpha = (Math::Magnitude2(cb) * Math::Dot(ba, ca)) / divider_ct;
+		const T beta = (Math::Magnitude2(ca) * Math::Dot(b - a, cb)) / divider_ct;
+		const T gamma = (Math::Magnitude2(ba) * Math::Dot(c - a, c - b)) / divider_ct;
+
+		const T radius = (Math::Magnitude(ba) * Math::Magnitude(cb) * Math::Magnitude(ca)) / divider_rad;
+		return Circle{a * alpha + b * beta + c * gamma, radius};
+	}
+
 }

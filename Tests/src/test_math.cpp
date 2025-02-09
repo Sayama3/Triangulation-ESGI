@@ -112,6 +112,43 @@ TEST(MathTest, TriangleTests) {
 
 	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, B, C, P_Outside2));
 	EXPECT_FALSE(TRG::Math::PointIsInsideTriangle(A, C, B, P_Outside2));
+
+	const Vec2 p1{-6,3};
+	const Vec2 p2{-3,2};
+	const Vec2 p3{0,3};
+	const Vec2 center{-3, 7};
+	const Real radius{5};
+
+	const auto circle = Math::GetCircle(p1, p2, p3);
+	const Vec2 calc_center = Math::GetCircleCenter(p1, p2, p3);
+	const Real calc_radius = Math::GetCircleRadius(p1, p2, p3);
+
+	EXPECT_REAL_EQ(calc_center.x, center.x);
+	EXPECT_REAL_EQ(calc_center.y, center.y);
+	EXPECT_REAL_EQ(calc_radius, radius);
+
+	EXPECT_REAL_EQ(circle.Center.x, center.x);
+	EXPECT_REAL_EQ(circle.Center.y, center.y);
+	EXPECT_REAL_EQ(circle.Radius, radius);
+
+	const Vec3 p1_3d{-6,3,0};
+	const Vec3 p2_3d{-3,2,0};
+	const Vec3 p3_3d{0,3,0};
+	const Vec3 center_3d{-3, 7,0};
+	const Real radius_3d{5};
+
+	const auto sphere = Math::GetSphere(p1_3d, p2_3d, p3_3d);
+	const Vec2 calc_center_3d = Math::GetSphereCenter(p1_3d, p2_3d, p3_3d);
+	const Real calc_radius_3d = Math::GetSphereRadius(p1_3d, p2_3d, p3_3d);
+
+	EXPECT_REAL_EQ(calc_center_3d.x, center_3d.x);
+	EXPECT_REAL_EQ(calc_center_3d.y, center_3d.y);
+	EXPECT_REAL_EQ(calc_radius_3d, radius_3d);
+
+	EXPECT_REAL_EQ(sphere.Center.x, center_3d.x);
+	EXPECT_REAL_EQ(sphere.Center.y, center_3d.y);
+	EXPECT_REAL_EQ(sphere.Center.z, center_3d.z);
+	EXPECT_REAL_EQ(sphere.Radius, radius_3d);
 }
 
 TEST(MathTest, RayCastTests) {
