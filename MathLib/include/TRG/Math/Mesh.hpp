@@ -161,9 +161,9 @@ namespace TRG::Math {
 					auto& BC = m_Edges[BCId];
 					auto& AC = m_Edges[ACId];
 
-					const auto A = m_Vertices[AB.VertexA];
-					const auto B = m_Vertices[AB.VertexB];
-					const auto C = m_Vertices[newVertId];
+					const auto& A = m_Vertices[AB.VertexA];
+					const auto& B = m_Vertices[AB.VertexB];
+					const auto& C = m_Vertices[newVertId];
 
 					if (Math::IsTriangleOriented(A.Position, B.Position, C.Position)) {
 						const auto ABCId = GenerateTriangleId();

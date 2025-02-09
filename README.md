@@ -12,7 +12,7 @@ We've made it using :
 
 The goals are :
 - [X] Be able to make a 2D convex envelope of a point cloud.
-- [ ] Be able to triangulate the 2D point cloud.
+- [X] Be able to triangulate the 2D point cloud.
 - [ ] Use Delaunay method to triangulate the point cloud
 - [ ] Create a 2D Voronoi Diagram
 - [ ] Implement a 3D Convex Envelop
