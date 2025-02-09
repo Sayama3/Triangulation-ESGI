@@ -67,6 +67,7 @@ namespace TRG::Math {
 		void clear();
 	private:
 		void ReverseEdge(uint32_t edgeId);
+		std::tuple<bool, uint32_t, uint32_t, uint32_t, uint32_t> RespectDelaunay(uint32_t edgeId);
 	private:
 		[[nodiscard]] uint32_t GenerateVertexId() { return m_VertexIdGenerator++; };
 		[[nodiscard]] uint32_t GenerateEdgeId() { return m_EdgeIdGenerator++; };
@@ -228,8 +229,62 @@ namespace TRG::Math {
 		}
 	}
 
+	inline std::tuple<bool, uint32_t, uint32_t, uint32_t, uint32_t> MeshGraph::RespectDelaunay(const uint32_t edgeId) {
+		const auto& edge = m_Edges.at(edgeId);
+		if (!edge.TriangleLeft || !edge.TriangleRight) return {true, -1, -1, -1, -1};
+
+		const uint32_t s1Id = edge.VertexB;
+		const uint32_t s2Id = edge.VertexA;
+		const Vertex& s1 = m_Vertices.at(s1Id);
+		const Vertex& s2 = m_Vertices.at(s2Id);
+
+		const uint32_t t1Id = edge.TriangleLeft.value();
+		const Triangle& t1 = m_Triangles.at(t1Id);
+		uint32_t a1Id = -1;
+		uint32_t a4Id = -1;
+		if (t1.EdgeAB == edgeId) {
+			a1Id = t1.EdgeBC;
+			a4Id = t1.EdgeCA;
+		} else if (t1.EdgeBC == edgeId) {
+			a1Id = t1.EdgeCA;
+			a4Id = t1.EdgeAB;
+		} else /* t1.EdgeCA == edgeId */ {
+			a1Id = t1.EdgeAB;
+			a4Id = t1.EdgeBC;
+		}
+
+		const Edge& a1 = m_Edges.at(a1Id);
+		const uint32_t s4Id = a1.VertexA == s1Id || a1.VertexA == s2Id ? a1.VertexB : a1.VertexA;
+		const Vertex& s4 = m_Vertices.at(s4Id);
+		const Circle t1Circle = Math::GetCircle(s1.Position, s4.Position, s2.Position);
+
+		const uint32_t t2Id = edge.TriangleRight.value();
+		const Triangle& t2 = m_Triangles.at(t2Id);
+		uint32_t a2Id = -1;
+		uint32_t a3Id = -1;
+		if (t2.EdgeAB == edgeId) {
+			a3Id = t2.EdgeBC;
+			a2Id = t2.EdgeCA;
+		} else if (t2.EdgeBC == edgeId) {
+			a3Id = t2.EdgeCA;
+			a2Id = t2.EdgeAB;
+		} else /* t2.EdgeCA == edgeId */ {
+			a3Id = t2.EdgeAB;
+			a2Id = t2.EdgeBC;
+		}
+		const Edge& a2 = m_Edges.at(a2Id);
+		const uint32_t s3Id = a2.VertexA == s1Id || a2.VertexA == s2Id ? a2.VertexB : a2.VertexA;
+		const Vertex& s3 = m_Vertices.at(s3Id);
+		const Circle t2Circle = Math::GetCircle(s1.Position, s2.Position, s3.Position);
+
+
+		const bool shouldInvert = PointIsInsideCircle(t1Circle, s3.Position) || PointIsInsideCircle(t2Circle, s4.Position);
+		return {!shouldInvert, a1Id, a2Id, a3Id, a4Id};
+	}
+
 	inline void MeshGraph::DelaunayTriangulation() {
 		std::queue<uint32_t> edgeToCheck;
+
 		for (auto [id, edge]: m_Edges) {
 			if (edge.TriangleLeft && edge.TriangleRight)
 				edgeToCheck.push(id);
@@ -238,60 +293,10 @@ namespace TRG::Math {
 		while (!edgeToCheck.empty()) {
 			const auto edgeId = edgeToCheck.front();
 			edgeToCheck.pop();
-			const auto& edge = m_Edges.at(edgeId);
-			if (!edge.TriangleLeft || !edge.TriangleRight) return;
 
-			const uint32_t t1Id = edge.TriangleLeft.value();
-			const uint32_t t2Id = edge.TriangleRight.value();
+			auto [respectDelaunay, a1Id, a2Id, a3Id, a4Id] = RespectDelaunay(edgeId);
 
-			const Triangle& t1 = m_Triangles.at(t1Id);
-			const Triangle& t2 = m_Triangles.at(t2Id);
-
-			uint32_t a1Id = -1;
-			uint32_t a4Id = -1;
-			if (t1.EdgeAB == edgeId) {
-				a1Id = t1.EdgeBC;
-				a4Id = t1.EdgeCA;
-			} else if (t1.EdgeBC == edgeId) {
-				a1Id = t1.EdgeCA;
-				a4Id = t1.EdgeAB;
-			} else /* t1.EdgeCA == edgeId */ {
-				a1Id = t1.EdgeAB;
-				a4Id = t1.EdgeBC;
-			}
-
-			uint32_t a2Id = -1;
-			uint32_t a3Id = -1;
-			if (t2.EdgeAB == edgeId) {
-				a3Id = t2.EdgeBC;
-				a2Id = t2.EdgeCA;
-			} else if (t2.EdgeBC == edgeId) {
-				a3Id = t2.EdgeCA;
-				a2Id = t2.EdgeAB;
-			} else /* t2.EdgeCA == edgeId */ {
-				a3Id = t2.EdgeAB;
-				a2Id = t2.EdgeBC;
-			}
-			const uint32_t s1Id = edge.VertexB;
-			const uint32_t s2Id = edge.VertexA;
-
-			const Vertex& s1 = m_Vertices.at(s1Id);
-			const Vertex& s2 = m_Vertices.at(s2Id);
-
-			const Edge& a1 = m_Edges.at(a1Id);
-			const uint32_t s4Id = a1.VertexA == s1Id || a1.VertexA == s2Id ? a1.VertexB : a1.VertexA;
-
-			const Edge& a2 = m_Edges.at(a2Id);
-			const uint32_t s3Id = a2.VertexA == s1Id || a2.VertexA == s2Id ? a2.VertexB : a2.VertexA;
-
-			const Vertex& s3 = m_Vertices.at(s3Id);
-			const Vertex& s4 = m_Vertices.at(s4Id);
-
-			const Circle t1Circle = Math::GetCircle(s1.Position, s4.Position, s2.Position);
-			const Circle t2Circle = Math::GetCircle(s1.Position, s2.Position, s3.Position);
-
-			const bool shouldInvert = PointIsInsideCircle(t1Circle, s3.Position) || PointIsInsideCircle(t2Circle, s4.Position);
-			if (shouldInvert) {
+			if (!respectDelaunay) {
 				ReverseEdge(edgeId);
 				edgeToCheck.push(a1Id);
 				edgeToCheck.push(a2Id);
