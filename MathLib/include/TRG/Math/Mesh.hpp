@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Basics.hpp"
+#include <queue>
 
 namespace TRG::Math {
 	class MeshGraph {
@@ -34,6 +35,8 @@ namespace TRG::Math {
 		void DelaunayTriangulation();
 	public:
 		void clear();
+	private:
+		void ReverseEdge(uint32_t edgeId);
 	private:
 		[[nodiscard]] uint32_t GenerateVertexId() { return m_VertexIdGenerator++; };
 		[[nodiscard]] uint32_t GenerateEdgeId() { return m_EdgeIdGenerator++; };
@@ -196,12 +199,145 @@ namespace TRG::Math {
 	}
 
 	inline void MeshGraph::DelaunayTriangulation() {
+		std::queue<uint32_t> edgeToCheck;
+		for (auto [id, edge]: m_Edges) {
+			if (edge.TriangleLeft && edge.TriangleRight)
+				edgeToCheck.push(id);
+		}
 
+		while (!edgeToCheck.empty()) {
+			const auto edgeId = edgeToCheck.front();
+			edgeToCheck.pop();
+			const auto& edge = m_Edges.at(edgeId);
+			if (!edge.TriangleLeft || !edge.TriangleRight) return;
+
+			const uint32_t t1Id = edge.TriangleLeft.value();
+			const uint32_t t2Id = edge.TriangleRight.value();
+
+			const Triangle& t1 = m_Triangles.at(t1Id);
+			const Triangle& t2 = m_Triangles.at(t2Id);
+
+			uint32_t a1Id = -1;
+			uint32_t a4Id = -1;
+			if (t1.EdgeAB == edgeId) {
+				a1Id = t1.EdgeBC;
+				a4Id = t1.EdgeCA;
+			} else if (t1.EdgeBC == edgeId) {
+				a1Id = t1.EdgeCA;
+				a4Id = t1.EdgeAB;
+			} else /* t1.EdgeCA == edgeId */ {
+				a1Id = t1.EdgeAB;
+				a4Id = t1.EdgeBC;
+			}
+
+			uint32_t a2Id = -1;
+			uint32_t a3Id = -1;
+			if (t2.EdgeAB == edgeId) {
+				a3Id = t2.EdgeBC;
+				a2Id = t2.EdgeCA;
+			} else if (t2.EdgeBC == edgeId) {
+				a3Id = t2.EdgeCA;
+				a2Id = t2.EdgeAB;
+			} else /* t2.EdgeCA == edgeId */ {
+				a3Id = t2.EdgeAB;
+				a2Id = t2.EdgeBC;
+			}
+			const uint32_t s1Id = edge.VertexB;
+			const uint32_t s2Id = edge.VertexA;
+
+			const Vertex& s1 = m_Vertices.at(s1Id);
+			const Vertex& s2 = m_Vertices.at(s2Id);
+
+			const Edge& a1 = m_Edges.at(a1Id);
+			const uint32_t s4Id = a1.VertexA == s1Id || a1.VertexA == s2Id ? a1.VertexB : a1.VertexA;
+
+			const Edge& a2 = m_Edges.at(a2Id);
+			const uint32_t s3Id = a2.VertexA == s1Id || a2.VertexA == s2Id ? a2.VertexB : a2.VertexA;
+
+			const Vertex& s3 = m_Vertices.at(s3Id);
+			const Vertex& s4 = m_Vertices.at(s4Id);
+
+			const Circle t1Circle = Math::GetCircle(s1.Position, s4.Position, s2.Position);
+			const Circle t2Circle = Math::GetCircle(s1.Position, s2.Position, s3.Position);
+
+			const bool shouldInvert = PointIsInsideCircle(t1Circle, s3.Position) || PointIsInsideCircle(t2Circle, s4.Position);
+			if (shouldInvert) {
+				ReverseEdge(edgeId);
+				edgeToCheck.push(a1Id);
+				edgeToCheck.push(a2Id);
+				edgeToCheck.push(a3Id);
+				edgeToCheck.push(a4Id);
+			}
+		}
 	}
 
 	inline void MeshGraph::clear() {
 		m_Vertices.clear();
 		m_Edges.clear();
 		m_Triangles.clear();
+	}
+
+	inline void MeshGraph::ReverseEdge(const uint32_t edgeId) {
+		if (!m_Edges.contains(edgeId)) return;
+		Edge& edge = m_Edges.at(edgeId);
+		if (!edge.TriangleLeft || !edge.TriangleRight) return;
+
+		const auto t1Id = edge.TriangleLeft.value();
+		const auto t2Id = edge.TriangleRight.value();
+
+		if (!m_Triangles.contains(t1Id)) return;
+		if (!m_Triangles.contains(t2Id)) return;
+
+		Triangle& t1 = m_Triangles.at(t1Id);
+		Triangle& t2 = m_Triangles.at(t2Id);
+
+		uint32_t a1Id = -1;
+		uint32_t a4Id = -1;
+		if (t1.EdgeAB == edgeId) {
+			a1Id = t1.EdgeBC;
+			a4Id = t1.EdgeCA;
+		} else if (t1.EdgeBC == edgeId) {
+			a1Id = t1.EdgeCA;
+			a4Id = t1.EdgeAB;
+		} else /* t1.EdgeCA == edgeId */ {
+			a1Id = t1.EdgeAB;
+			a4Id = t1.EdgeBC;
+		}
+
+		uint32_t a2Id = -1;
+		uint32_t a3Id = -1;
+		if (t2.EdgeAB == edgeId) {
+			a3Id = t2.EdgeBC;
+			a2Id = t2.EdgeCA;
+		} else if (t2.EdgeBC == edgeId) {
+			a3Id = t2.EdgeCA;
+			a2Id = t2.EdgeAB;
+		} else /* t2.EdgeCA == edgeId */ {
+			a3Id = t2.EdgeAB;
+			a2Id = t2.EdgeBC;
+		}
+
+		const uint32_t s2Id = edge.VertexA;
+		const uint32_t s1Id = edge.VertexB;
+
+		const Edge& a1 = m_Edges.at(a1Id);
+		Edge& a4 = m_Edges.at(a4Id);
+		const uint32_t s4Id = a1.VertexA == s1Id || a1.VertexA == s2Id ? a1.VertexB : a1.VertexA;
+
+		const Edge& a2 = m_Edges.at(a2Id);
+		Edge& a3 = m_Edges.at(a3Id);
+		const uint32_t s3Id = a2.VertexA == s1Id || a2.VertexA == s2Id ? a2.VertexB : a2.VertexA;
+
+
+
+		if (a4.TriangleLeft == t1Id) a4.TriangleLeft = t2Id;
+		else  a4.TriangleRight = t2Id;
+
+		if (a3.TriangleLeft == t2Id) a3.TriangleLeft = t1Id;
+		else a3.TriangleRight = t1Id;
+
+		edge = {s3Id, s4Id, t2Id,t1Id};
+		t1 = {edgeId, a2Id, a1Id};
+		t2 = {edgeId, a4Id, a3Id};
 	}
 }

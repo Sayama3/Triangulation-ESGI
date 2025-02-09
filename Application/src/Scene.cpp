@@ -210,6 +210,10 @@ namespace TRG::Application {
 				m_Model = LoadModelFromMesh(mesh);
 			}
 
+			if (ImGui::Button("Optimize Pre-Mesh")) {
+				m_MeshGraph.DelaunayTriangulation();
+			}
+
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
 				ImGui::PushID(i);
 				std::string name = "Point " + std::to_string(i);
