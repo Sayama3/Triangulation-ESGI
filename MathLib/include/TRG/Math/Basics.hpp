@@ -115,12 +115,12 @@ namespace TRG::Math {
 	}
 
 	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
-	[[nodiscard]] inline static bool PointIsInsideCircle(const Circle<T,Q>& circle, const glm::vec<2,T,Q>& point) {
+	[[nodiscard]] inline static bool IsPointInsideCircle(const Circle<T,Q>& circle, const glm::vec<2,T,Q>& point) {
 		return Math::Distance(circle.Center, point) < circle.Radius;
 	}
 
 	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
-	[[nodiscard]] inline static bool PointIsInsideSphere(const Sphere<T,Q>& sphere, const glm::vec<3,T,Q>& point) {
+	[[nodiscard]] inline static bool IsPointInsideSphere(const Sphere<T,Q>& sphere, const glm::vec<3,T,Q>& point) {
 		return Math::Distance(sphere.Center, point) < sphere.Radius;
 	}
 } // TRG

@@ -62,12 +62,14 @@ namespace TRG::Math {
 		};
 	public:
 		void AddPoint(Vector2 point);
+		void AddDelaunayPoint(Vector2 point);
 		void DelaunayTriangulation();
 	public:
 		void clear();
 	private:
 		void ReverseEdge(uint32_t edgeId);
 		std::tuple<bool, uint32_t, uint32_t, uint32_t, uint32_t> RespectDelaunay(uint32_t edgeId);
+		std::optional<std::tuple<uint32_t,uint32_t,uint32_t>> GetOrientedVerticesOfTriangle(uint32_t triangleId);
 	private:
 		[[nodiscard]] uint32_t GenerateVertexId() { return m_VertexIdGenerator++; };
 		[[nodiscard]] uint32_t GenerateEdgeId() { return m_EdgeIdGenerator++; };
@@ -229,6 +231,228 @@ namespace TRG::Math {
 		}
 	}
 
+	inline void MeshGraph::AddDelaunayPoint(const Vector2 point) {
+		const uint32_t newVertId = GenerateVertexId();
+		m_Vertices[newVertId] = {point};
+		if (m_Vertices.size() > 2 && !m_Triangles.empty()) {
+			std::vector<uint32_t> edgeToTriangulate;
+			std::unordered_map<ReversiblePair<uint32_t, uint32_t>, uint32_t, ReversiblePairHash> vertexPairToEdge;
+			edgeToTriangulate.reserve(1024);
+			vertexPairToEdge.reserve(1024);
+
+			// Handle Point is inside a triangle
+			for (auto [trId, triangle]: m_Triangles) {
+
+				Edge& AB = m_Edges[triangle.EdgeAB];
+				Edge& secondEdge = m_Edges[triangle.EdgeBC];
+				Edge& thirdEdge = m_Edges[triangle.EdgeCA];
+
+				const uint32_t aId = AB.VertexA;
+				const uint32_t bId = AB.VertexB;
+				const uint32_t cId = (secondEdge.VertexA != AB.VertexB) && (secondEdge.VertexA != AB.VertexA) ? secondEdge.VertexA : secondEdge.VertexB;
+
+				const Vertex& A = m_Vertices[aId];
+				const Vertex& B = m_Vertices[bId];
+				const Vertex& C = m_Vertices[cId];
+
+
+				if (Math::PointIsInsideTriangle(A.Position,B.Position,C.Position,point)) {
+					// Remove existence of triangle.
+					m_Triangles.erase(m_Triangles.find(trId));
+
+					edgeToTriangulate.push_back(triangle.EdgeAB);
+					vertexPairToEdge[ReversiblePair{aId, bId}] = triangle.EdgeAB;
+					edgeToTriangulate.push_back(triangle.EdgeBC);
+					vertexPairToEdge[ReversiblePair{bId, cId}] = triangle.EdgeBC;
+					edgeToTriangulate.push_back(triangle.EdgeCA);
+					vertexPairToEdge[ReversiblePair{cId, aId}] = triangle.EdgeCA;
+
+					if(AB.TriangleLeft == trId) AB.TriangleLeft = std::nullopt;
+					else AB.TriangleRight = std::nullopt;
+
+					if(secondEdge.TriangleLeft == trId) secondEdge.TriangleLeft = std::nullopt;
+					else secondEdge.TriangleRight = std::nullopt;
+
+					if(thirdEdge.TriangleLeft == trId) thirdEdge.TriangleLeft = std::nullopt;
+					else thirdEdge.TriangleRight = std::nullopt;
+					break;
+				}
+			}
+
+			// Handle Point is outside triangles
+			if (edgeToTriangulate.empty()) {
+				for (auto& [edgeId, edge] : m_Edges) {
+					if (edge.TriangleLeft && edge.TriangleRight) continue;
+
+					const auto& A = m_Vertices.at(edge.VertexA);
+					const auto& B = m_Vertices.at(edge.VertexB);
+
+					const auto ABCIsOriented = Math::IsTriangleOriented(A.Position, B.Position, point);
+					if (!edge.TriangleLeft && ABCIsOriented) {
+						edgeToTriangulate.push_back(edgeId);
+						vertexPairToEdge[ReversiblePair{edge.VertexA, edge.VertexB}] = edgeId;
+					} else if (!edge.TriangleRight && !ABCIsOriented) {
+						edgeToTriangulate.push_back(edgeId);
+						vertexPairToEdge[ReversiblePair{edge.VertexA, edge.VertexB}] = edgeId;
+					}
+				}
+			}
+
+			while (!edgeToTriangulate.empty()) {
+				const uint32_t edgeId = edgeToTriangulate.back();
+				edgeToTriangulate.pop_back();
+				Edge& edge = m_Edges.at(edgeId);
+
+				const uint32_t aId = edge.VertexA;
+				const uint32_t bId = edge.VertexB;
+				const auto& [APos] = m_Vertices.at(aId);
+				const auto& [BPos] = m_Vertices.at(bId);
+
+				const bool isOriented = Math::IsTriangleOriented(APos, BPos, point);
+				const std::optional<uint32_t> triangleToCheck = isOriented ? edge.TriangleRight : edge.TriangleLeft;
+
+				bool edgeIsValid = true;
+				if (triangleToCheck) {
+					const auto triangleId = triangleToCheck.value();
+					const Triangle& ABC = m_Triangles.at(triangleId);
+					const uint32_t abId = ABC.EdgeAB;
+					const uint32_t bcId = ABC.EdgeBC;
+					const uint32_t caId = ABC.EdgeCA;
+					const bool edgeIsAB = edgeId == abId;
+					const bool edgeIsBC = edgeId == bcId;
+					const bool edgeIsCA = edgeId == caId;
+
+					uint32_t cId;
+					{
+						const Edge& AB = m_Edges.at(abId);
+						const Edge& BC = m_Edges.at(bcId);
+						if (edgeIsAB) {
+							cId = BC.VertexA == aId || BC.VertexA == bId ? BC.VertexB : BC.VertexA;
+						} else {
+							cId = AB.VertexA == aId || AB.VertexA == bId ? AB.VertexB : AB.VertexA;
+						}
+					}
+					const auto& [CPos] = m_Vertices.at(cId);
+					const Circle circle = Math::GetCircle(APos, BPos, CPos);
+					edgeIsValid = !Math::IsPointInsideCircle(circle, point);
+					if (!edgeIsValid) {
+						{
+							auto& firstEdge = m_Edges.at(ABC.EdgeAB);
+							if(firstEdge.TriangleLeft == triangleId) firstEdge.TriangleLeft = std::nullopt;
+							else firstEdge.TriangleRight = std::nullopt;
+						}
+						{
+							auto& secondEdge = m_Edges.at(ABC.EdgeBC);
+							if(secondEdge.TriangleLeft == triangleId) secondEdge.TriangleLeft = std::nullopt;
+							else secondEdge.TriangleRight = std::nullopt;
+						}
+						{
+							auto& thirdEdge = m_Edges.at(ABC.EdgeCA);
+							if(thirdEdge.TriangleLeft == triangleId) thirdEdge.TriangleLeft = std::nullopt;
+							else thirdEdge.TriangleRight = std::nullopt;
+						}
+						m_Edges.erase(m_Edges.find(edgeId));
+						m_Triangles.erase(m_Triangles.find(triangleId));
+						if(!edgeIsAB) edgeToTriangulate.push_back(abId);
+						if(!edgeIsBC) edgeToTriangulate.push_back(bcId);
+						if(!edgeIsCA) edgeToTriangulate.push_back(caId);
+					}
+				}
+
+				if (edgeIsValid) {
+					uint32_t edgeBCId;
+					if (vertexPairToEdge.contains({bId, newVertId})) {
+						edgeBCId = vertexPairToEdge.at({bId, newVertId});
+					} else {
+						const uint32_t bcId = GenerateEdgeId();
+						m_Edges[bcId] = {bId, newVertId};
+						edgeBCId = (vertexPairToEdge[{bId, newVertId}] = bcId);
+					}
+
+					uint32_t edgeACId;
+					if (vertexPairToEdge.contains({aId, newVertId})) {
+						edgeACId = vertexPairToEdge.at({aId, newVertId});
+					} else {
+						const uint32_t acId = GenerateEdgeId();
+						m_Edges[acId] = {aId, newVertId};
+						edgeACId = (vertexPairToEdge[{aId, newVertId}] = acId);
+					}
+					Edge& edgeAC = m_Edges[edgeACId];
+					Edge& edgeBC = m_Edges[edgeBCId];
+
+					uint32_t trId = GenerateTriangleId();
+					if (isOriented) {
+						m_Triangles[trId] = {edgeId, edgeBCId, edgeACId};
+						edge.TriangleLeft = trId;
+
+						if(edgeBC.VertexA == bId) edgeBC.TriangleLeft = trId;
+						else edgeBC.TriangleRight = trId;
+
+						if(edgeAC.VertexA == aId) edgeAC.TriangleRight = trId;
+						else edgeAC.TriangleLeft = trId;
+					} else {
+						m_Triangles[trId] = {edgeId, edgeACId, edgeBCId};
+						edge.TriangleRight = trId;
+
+						if(edgeBC.VertexA == bId) edgeBC.TriangleRight = trId;
+						else edgeBC.TriangleLeft = trId;
+
+						if(edgeAC.VertexA == aId) edgeAC.TriangleLeft = trId;
+						else edgeAC.TriangleRight = trId;
+					}
+				}
+			}
+		}
+		else if (m_Vertices.size() > 2 && m_Triangles.empty()) {
+			// TODO: Handle the colinear edge case.
+			// Create all triangle if not colinear
+			for (auto& [edgeId, edge]: m_Edges) {
+				const uint32_t aId = edge.VertexA;
+				const uint32_t bId = edge.VertexB;
+				if (aId == newVertId || bId == newVertId) continue;
+
+				const Vertex& A = m_Vertices.at(aId);
+				const Vertex& B = m_Vertices.at(bId);
+
+				const uint32_t acId = GenerateEdgeId();
+				Edge AC{aId, newVertId};
+
+				const uint32_t bcId = GenerateEdgeId();
+				Edge BC{bId, newVertId};
+
+				const uint32_t abcId = GenerateTriangleId();
+				if (Math::IsTriangleOriented(A.Position, B.Position, point)) {
+					m_Triangles[abcId] = Triangle{edgeId, bcId, acId};
+					edge.TriangleLeft = abcId;
+					BC.TriangleLeft = abcId;
+					AC.TriangleRight = abcId;
+				} else {
+					m_Triangles[abcId] = Triangle{edgeId, acId, bcId};
+					edge.TriangleRight = abcId;
+					BC.TriangleRight = abcId;
+					AC.TriangleLeft = abcId;
+				}
+				m_Edges[acId] = AC;
+				m_Edges[bcId] = BC;
+			}
+		}
+		else if (m_Vertices.size() == 2) {
+			uint32_t otherId = -1;
+			for (const auto& [id,vert] : m_Vertices) {
+				if (id != newVertId) {
+					otherId = id;
+					break;
+				}
+			}
+			if (otherId == -1) return; // Too much safety but is okay.
+			const uint32_t newEdge = GenerateEdgeId();
+			if (m_Vertices.at(otherId).Position.x < point.x)
+				m_Edges[newEdge] = {otherId, newVertId};
+			else
+				m_Edges[newEdge] = {newVertId, otherId};
+		}
+	}
+
 	inline std::tuple<bool, uint32_t, uint32_t, uint32_t, uint32_t> MeshGraph::RespectDelaunay(const uint32_t edgeId) {
 		const auto& edge = m_Edges.at(edgeId);
 		if (!edge.TriangleLeft || !edge.TriangleRight) return {true, -1, -1, -1, -1};
@@ -278,8 +502,30 @@ namespace TRG::Math {
 		const Circle t2Circle = Math::GetCircle(s1.Position, s2.Position, s3.Position);
 
 
-		const bool shouldInvert = PointIsInsideCircle(t1Circle, s3.Position) || PointIsInsideCircle(t2Circle, s4.Position);
+		const bool shouldInvert = IsPointInsideCircle(t1Circle, s3.Position) || IsPointInsideCircle(t2Circle, s4.Position);
 		return {!shouldInvert, a1Id, a2Id, a3Id, a4Id};
+	}
+
+	inline std::optional<std::tuple<uint32_t, uint32_t, uint32_t>> MeshGraph::GetOrientedVerticesOfTriangle(const uint32_t triangleId) {
+		if (!m_Triangles.contains(triangleId)) return std::nullopt;
+		const Triangle& ABC = m_Triangles.at(triangleId);
+
+		const uint32_t abId = ABC.EdgeAB;
+		const uint32_t bcId = ABC.EdgeBC;
+
+		const Edge& AB = m_Edges.at(abId);
+		const Edge& BC = m_Edges.at(bcId);
+
+		const uint32_t aId = AB.VertexA;
+		const uint32_t bId = BC.VertexB;
+		const uint32_t cId = BC.VertexA == AB.VertexA || BC.VertexA == AB.VertexB ? BC.VertexB : BC.VertexA;
+		const bool ABCIsOriented = AB.VertexB == BC.VertexA || AB.VertexB == BC.VertexB;
+
+		if (ABCIsOriented) {
+			return std::tuple{aId, bId, cId};
+		} else {
+			return std::tuple{aId, cId, bId};
+		}
 	}
 
 	inline void MeshGraph::DelaunayTriangulation() {

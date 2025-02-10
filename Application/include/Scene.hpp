@@ -41,6 +41,7 @@ namespace TRG::Application {
 		void RenderImGuiCameraInputs();
 		void RenderImGuiJarvisShell();
 		void RenderImGuiGrahamScanShell();
+		void RenderImGuiMeshGraph();
 
 		void RenderImGui(float ts) override;
 		[[nodiscard]] Camera3D GetCamera3D() const;
@@ -71,6 +72,7 @@ namespace TRG::Application {
 		std::optional<Vec2> EndAddPoint(float ts);
 
 		void UpdatePointToAdd();
+		void MakeModel(const std::vector<glm::vec<3, Real>>& vertices);
 
 	private:
 		EditorCamera m_Camera;
@@ -83,7 +85,11 @@ namespace TRG::Application {
 
 	private:
 		std::vector<Vec2> m_2DPoints;
-		Math::MeshGraph m_MeshGraph;
+		std::vector<Math::MeshGraph> m_MeshGraphs{Math::MeshGraph{}};
+		// Math::MeshGraph m_MeshGraph;
+		Math::MeshGraph GetCopyMeshGraph() const {return m_MeshGraphs.back();}
+		Math::MeshGraph& GetMeshGraph() {return m_MeshGraphs.back();}
+		const Math::MeshGraph& GetMeshGraph() const {return m_MeshGraphs.back();}
 	private:
 		std::vector<Vec2> m_JarvisShell;
 		std::vector<Vec2> m_GrahamScanShell;
@@ -105,6 +111,7 @@ namespace TRG::Application {
 	private:
 		Action m_Action = Action::None;
 		bool m_EditInputs = false;
+		bool m_ShouldOptimizeOnAddPoint = false;
 	};
 
 } // TRG::Application

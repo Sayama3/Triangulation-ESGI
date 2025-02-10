@@ -70,7 +70,11 @@ namespace TRG::Application {
 		}
 		else if (m_Action == Action::AddTriangulatePoint && IsMouseButtonReleased(m_AddTriangulationPoint)) {
 			if (const auto vec2 = EndAddPoint(ts)) {
-				m_MeshGraph.AddPoint(vec2.value());
+				m_MeshGraphs.push_back(GetCopyMeshGraph());
+				GetMeshGraph().AddDelaunayPoint(vec2.value());
+				// if (m_ShouldOptimizeOnAddPoint) {
+					// GetMeshGraph().DelaunayTriangulation();
+				// }
 			}
 			m_Action = Action::None;
 		}
@@ -104,27 +108,27 @@ namespace TRG::Application {
 		}
 
 		constexpr auto colorMeshGraph = Color{ 150, 180, 40, 255};
-		for (const auto& [vert_id, vert] : m_MeshGraph.m_Vertices) {
+		for (const auto& [vert_id, vert] : GetMeshGraph().m_Vertices) {
 			DrawSphere(Vector3(vert.Position.x, 0.001, vert.Position.y), 0.01, { 150, 180, 40, 255});
 		}
-		for (const auto& [id, tr] : m_MeshGraph.m_Triangles) {
-			const auto& edgeAB = m_MeshGraph.m_Edges.at(tr.EdgeAB);
-			const auto& edgeBC = m_MeshGraph.m_Edges.at(tr.EdgeBC);
+		for (const auto& [id, tr] : GetMeshGraph().m_Triangles) {
+			const auto& edgeAB = GetMeshGraph().m_Edges.at(tr.EdgeAB);
+			const auto& edgeBC = GetMeshGraph().m_Edges.at(tr.EdgeBC);
 			// const auto& edgeAC = m_MeshGraph.m_Edges.at(tr.EdgeC);
 
-			const auto& vertA = m_MeshGraph.m_Vertices.at(edgeAB.VertexA);
-			const auto& vertB = m_MeshGraph.m_Vertices.at(edgeAB.VertexB);
+			const auto& vertA = GetMeshGraph().m_Vertices.at(edgeAB.VertexA);
+			const auto& vertB = GetMeshGraph().m_Vertices.at(edgeAB.VertexB);
 			const bool BisInOtherEdge = edgeBC.VertexA == edgeAB.VertexB || edgeBC.VertexB == edgeAB.VertexB;
-			const auto& vertC = m_MeshGraph.m_Vertices.at((edgeBC.VertexA != edgeAB.VertexA) && (edgeBC.VertexA != edgeAB.VertexB) ? edgeBC.VertexA : edgeBC.VertexB);
+			const auto& vertC = GetMeshGraph().m_Vertices.at((edgeBC.VertexA != edgeAB.VertexA) && (edgeBC.VertexA != edgeAB.VertexB) ? edgeBC.VertexA : edgeBC.VertexB);
 			if (BisInOtherEdge) {
 				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 187, 225, 50, 255});
 			} else {
 				DrawTriangle3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y),Vector3(vertB.Position.x, 0.001, vertB.Position.y),Vector3(vertC.Position.x, 0.001, vertC.Position.y), { 187, 225, 50, 255});
 			}
 		}
-		for (const auto& [id, edge] : m_MeshGraph.m_Edges) {
-			const auto& vertA = m_MeshGraph.m_Vertices.at(edge.VertexA);
-			const auto& vertB = m_MeshGraph.m_Vertices.at(edge.VertexB);
+		for (const auto& [id, edge] : GetMeshGraph().m_Edges) {
+			const auto& vertA = GetMeshGraph().m_Vertices.at(edge.VertexA);
+			const auto& vertB = GetMeshGraph().m_Vertices.at(edge.VertexB);
 			// void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
 			DrawLine3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 75, 90, 20, 255});
 		}
@@ -165,6 +169,21 @@ namespace TRG::Application {
 		RenderImGuiCameraInputs();
 		RenderImGuiJarvisShell();
 		RenderImGuiGrahamScanShell();
+		RenderImGuiMeshGraph();
+	}
+
+	void Scene::MakeModel(const std::vector<glm::vec<3, Real>>& vertices) {
+		if (IsModelValid(m_Model)) {
+			UnloadModel(m_Model);
+		}
+		Mesh mesh{};
+		mesh.vertexCount = vertices.size();
+		mesh.triangleCount = vertices.size() / 3;
+		static_assert(sizeof(float) == sizeof(Real));
+		mesh.vertices = static_cast<float *>(malloc(sizeof(float) * 3 * vertices.size()));
+		std::memcpy(mesh.vertices, vertices.data(), sizeof(float) * 3 * vertices.size());
+		UploadMesh(&mesh, false);
+		m_Model = LoadModelFromMesh(mesh);
 	}
 
 	void Scene::RenderImGuiPoints() {
@@ -201,18 +220,12 @@ namespace TRG::Application {
 
 			if (ImGui::Button("Incremental Triangulation")) {
 				const auto vertices = Math::IncrementalTriangulation(m_2DPoints.cbegin(), m_2DPoints.cend(), 0.001);
-				Mesh mesh{};
-				mesh.vertexCount = vertices.size();
-				mesh.triangleCount = vertices.size() / 3;
-				static_assert(sizeof(float) == sizeof(Real));
-				mesh.vertices = static_cast<float *>(malloc(sizeof(float) * 3 * vertices.size()));
-				std::memcpy(mesh.vertices, vertices.data(), sizeof(float) * 3 * vertices.size());
-				UploadMesh(&mesh, false);
-				m_Model = LoadModelFromMesh(mesh);
+				MakeModel(vertices);
 			}
 
 			if (ImGui::Button("Optimize Pre-Mesh")) {
-				m_MeshGraph.DelaunayTriangulation();
+				m_MeshGraphs.push_back(GetCopyMeshGraph());
+				GetMeshGraph().DelaunayTriangulation();
 			}
 
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
@@ -312,6 +325,35 @@ namespace TRG::Application {
 			ImGui::End();
 			if (!open) m_GrahamScanShell.clear();
 		}
+	}
+
+	void Scene::RenderImGuiMeshGraph() {
+		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
+		ImGui::Begin("Mesh Graph");
+		{
+			ImGui::Checkbox("Edge Flip on Point Add", &m_ShouldOptimizeOnAddPoint);
+
+			if (ImGui::Button("Clear")) {
+				m_MeshGraphs.push_back(Math::MeshGraph{});
+			}
+
+			ImGui::BeginDisabled(GetMeshGraph().m_Vertices.empty());
+
+			if (ImGui::Button("Delaunay Edge Flipping")) {
+				m_MeshGraphs.push_back(GetCopyMeshGraph());
+				GetMeshGraph().DelaunayTriangulation();
+			}
+
+			if (m_MeshGraphs.size() > 1 && ImGui::Button("Roll Back Mesh Graph")) {
+				m_MeshGraphs.pop_back();
+			}
+
+			if (ImGui::Button("Make Mesh")) {
+				MakeModel(Math::MeshGraphToMesh3DXZ(GetMeshGraph(), 0.001_r));
+			}
+			ImGui::EndDisabled();
+		}
+		ImGui::End();
 	}
 
 	Camera3D Scene::GetCamera3D() const {
