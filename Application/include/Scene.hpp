@@ -112,6 +112,7 @@ namespace TRG::Application {
 		Action m_Action = Action::None;
 		bool m_EditInputs = false;
 		bool m_ShouldOptimizeOnAddPoint = false;
+		bool m_UseDelaunayCoreAddPoint = false;
 	};
 
 } // TRG::Application

@@ -31,6 +31,11 @@ namespace TRG::Math {
 		return glm::dot(x,y);
 	}
 
+	template<typename T>
+	[[nodiscard]] inline static bool Approx(const T a, const T b) {
+		return std::abs(b - a) < std::numeric_limits<T>::epsilon();
+	}
+
 	/**
 	 * Calculate the angle in radians between the vector 1 & 2.
 	 * @tparam L Length of the vector.

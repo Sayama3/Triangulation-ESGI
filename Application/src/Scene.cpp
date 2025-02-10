@@ -20,6 +20,7 @@ namespace TRG::Application {
 	using namespace TRG::Literal;
 
 	Scene::Scene() {
+		m_MeshGraphs.reserve(256);
 	}
 
 	Scene::~Scene() {
@@ -71,10 +72,14 @@ namespace TRG::Application {
 		else if (m_Action == Action::AddTriangulatePoint && IsMouseButtonReleased(m_AddTriangulationPoint)) {
 			if (const auto vec2 = EndAddPoint(ts)) {
 				m_MeshGraphs.push_back(GetCopyMeshGraph());
-				GetMeshGraph().AddDelaunayPoint(vec2.value());
-				// if (m_ShouldOptimizeOnAddPoint) {
-					// GetMeshGraph().DelaunayTriangulation();
-				// }
+				if (m_UseDelaunayCoreAddPoint) {
+					GetMeshGraph().AddDelaunayPoint(vec2.value());
+				} else {
+					GetMeshGraph().AddPoint(vec2.value());
+					if (m_ShouldOptimizeOnAddPoint) {
+						GetMeshGraph().DelaunayTriangulation();
+					}
+				}
 			}
 			m_Action = Action::None;
 		}
@@ -219,15 +224,26 @@ namespace TRG::Application {
 			}
 
 			if (ImGui::Button("Incremental Triangulation")) {
-				const auto vertices = Math::IncrementalTriangulation(m_2DPoints.cbegin(), m_2DPoints.cend(), 0.001);
+				const auto mg = Math::MeshGraph(m_2DPoints.cbegin(), m_2DPoints.cend(), false);
+				const auto vertices = Math::MeshGraphToMesh3DXZ(mg, 0.001);
 				MakeModel(vertices);
 			}
 
-			if (ImGui::Button("Optimize Pre-Mesh")) {
-				m_MeshGraphs.push_back(GetCopyMeshGraph());
-				GetMeshGraph().DelaunayTriangulation();
+			if (ImGui::Button("Incremental Triangulation + Delaunay")) {
+				auto mg = Math::MeshGraph(m_2DPoints.cbegin(), m_2DPoints.cend(), false);
+				mg.DelaunayTriangulation();
+				const auto vertices = Math::MeshGraphToMesh3DXZ(mg, 0.001);
+				MakeModel(vertices);
 			}
 
+			if (ImGui::Button("Core Delaunay Triangulation")) {
+				const auto mg = Math::MeshGraph(m_2DPoints.cbegin(), m_2DPoints.cend(), true);
+				const auto vertices = Math::MeshGraphToMesh3DXZ(mg, 0.001);
+				MakeModel(vertices);
+			}
+			ImGui::Separator();
+			ImGui::Text("POINTS");
+			ImGui::Separator();
 			for (uint64_t i = 0; i < m_2DPoints.size(); ++i) {
 				ImGui::PushID(i);
 				std::string name = "Point " + std::to_string(i);
@@ -331,27 +347,51 @@ namespace TRG::Application {
 		ImGui::SetWindowSize(ImVec2{400, 300}, ImGuiCond_FirstUseEver);
 		ImGui::Begin("Mesh Graph");
 		{
-			ImGui::Checkbox("Edge Flip on Point Add", &m_ShouldOptimizeOnAddPoint);
 
-			if (ImGui::Button("Clear")) {
-				m_MeshGraphs.push_back(Math::MeshGraph{});
+			const bool hasChanged = ImGui::Checkbox("Use Delaunay Core to add points", &m_UseDelaunayCoreAddPoint);
+			if (hasChanged && m_UseDelaunayCoreAddPoint) {
+				auto copy = GetCopyMeshGraph();
+				copy.DelaunayTriangulation();
+				m_MeshGraphs.push_back(copy);
 			}
 
-			ImGui::BeginDisabled(GetMeshGraph().m_Vertices.empty());
-
+			ImGui::BeginDisabled(m_UseDelaunayCoreAddPoint);
+			{
+				ImGui::Checkbox("Edge Flip on Point Add", &m_ShouldOptimizeOnAddPoint);
+			}
+			ImGui::EndDisabled();
 			if (ImGui::Button("Delaunay Edge Flipping")) {
 				m_MeshGraphs.push_back(GetCopyMeshGraph());
 				GetMeshGraph().DelaunayTriangulation();
 			}
 
-			if (m_MeshGraphs.size() > 1 && ImGui::Button("Roll Back Mesh Graph")) {
+			ImGui::BeginDisabled(m_MeshGraphs.size() <= 1);
+			if (ImGui::Button("Roll Back Mesh Graph")) {
 				m_MeshGraphs.pop_back();
 			}
+			ImGui::EndDisabled();
 
+			ImGui::BeginDisabled(GetMeshGraph().m_Triangles.empty());
 			if (ImGui::Button("Make Mesh")) {
 				MakeModel(Math::MeshGraphToMesh3DXZ(GetMeshGraph(), 0.001_r));
 			}
 			ImGui::EndDisabled();
+
+			// Clear
+			if (ImGui::Button("Clear Mesh Graph")) {
+				m_MeshGraphs.push_back(Math::MeshGraph{});
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Clear History")) {
+				auto copy = GetCopyMeshGraph();
+				m_MeshGraphs.clear();
+				m_MeshGraphs.push_back(copy);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Reset History")) {
+				m_MeshGraphs.clear();
+				m_MeshGraphs.push_back(Math::MeshGraph{});
+			}
 		}
 		ImGui::End();
 	}
