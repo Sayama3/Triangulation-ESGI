@@ -431,124 +431,94 @@ namespace TRG::Math {
 				}
 			}
 		} else if (m_Vertices.size() > 2 && m_Triangles.empty()) {
-			// TODO: Handle the colinear edge case.
-			// Create all triangle if not colinear
-			std::unordered_map<ReversiblePair<uint32_t, uint32_t>, uint32_t, ReversiblePairHash> vertexPairToEdge;
-			vertexPairToEdge.reserve(m_Edges.size());
 
-			std::optional<uint32_t> prev{std::nullopt};
-			T distToPrev = 0;
-			std::optional<uint32_t> next{std::nullopt};
-			T distToNext = 0;
+			bool createAllTheTriangles = false;
+			for (auto it = m_Vertices.begin(); it != m_Vertices.end(); ++it) {
+				if (it->first == newVertId) continue;
+				const auto a = it->second.Position;
+				auto oit = it;
+				++oit;
+				for (; oit != m_Vertices.end(); ++oit) {
+					if (oit->first == newVertId) continue;
+					const auto b = oit->second.Position;
 
-			for (auto &[edgeId, edge]: m_Edges) {
-				const uint32_t aId = edge.VertexA;
-				const uint32_t bId = edge.VertexB;
-				if (aId == newVertId || bId == newVertId) continue;
-				vertexPairToEdge[{aId, bId}] = edgeId;
-
-				const Vertex &A = m_Vertices.at(aId);
-				const Vertex &B = m_Vertices.at(bId);
-
-				const auto vecAB = B.Position - A.Position;
-				const auto vecAP = point - A.Position;
-				const auto dotABAP = Math::Dot(Math::Normalize(vecAB), Math::Normalize(vecAP));
-				const bool isAligned = std::abs(dotABAP) >= 1 - REAL_EPSILON;
-				if (isAligned) {
-					const T lenAB = Math::Magnitude(vecAB);
-					const T dist = Math::Magnitude(vecAP) * Math::Sign(dotABAP);
-					if (!prev && !next) {
-						if (dist < 0) {
-							next = aId;
-							distToNext = -dist;
-						} else if (dist > lenAB) {
-							prev = bId;
-							distToPrev = dist - lenAB;
-						} else {
-							prev = aId;
-							distToPrev = dist;
-							next = bId;
-							distToNext = lenAB - dist;
-							break;
-						}
-					} else {
-						if (dist >= 0 && dist <= lenAB) {
-							prev = aId;
-							distToPrev = dist;
-							next = bId;
-							distToNext = lenAB - dist;
-							break;
-						} else if (dist < 0) {
-							if (next && distToNext > -dist) {
-								next = aId;
-								distToNext = -dist;
-							}
-						} else if (dist > lenAB) {
-							if (prev && distToPrev > dist - lenAB) {
-								prev = bId;
-								distToPrev = dist - lenAB;
-							}
-						}
+					if (std::abs(Math::Dot(Math::Normalize(b - a), Math::Normalize(point - a))) < 1-std::numeric_limits<T>::epsilon()) {
+						createAllTheTriangles = true;
+						break;
 					}
-					continue;
+				}
+				if (createAllTheTriangles) break;
+			}
+
+			if (createAllTheTriangles) {
+
+				std::unordered_map<ReversiblePair<uint32_t, uint32_t>, uint32_t, ReversiblePairHash> VertexPairToEdge;
+				std::vector<std::pair<Vector2, uint32_t>> pointOrdered;
+				pointOrdered.reserve(m_Vertices.size() - 1);
+
+				for (auto[id, vert] : m_Vertices) {
+					if (id == newVertId) continue;
+					pointOrdered.push_back({vert.Position, id});
 				}
 
-				const uint32_t acId = GenerateEdgeId();
-				Edge AC{aId, newVertId};
+				std::sort(pointOrdered.begin(), pointOrdered.end(), [](std::pair<Vector2, uint32_t> a, std::pair<Vector2, uint32_t> b) {
+					if (a.first.x < b.first.x) {
+						return true;
+					} else if (a.first.x == b.first.x) {
+						return a.first.x <= b.first.y;
+					} else /* if (a.first.x > b.first.x)*/ {
+						return false;
+					}
+				});
 
-				const uint32_t bcId = GenerateEdgeId();
-				Edge BC{bId, newVertId};
-
-
-				const uint32_t abcId = GenerateTriangleId();
-				if (Math::IsTriangleOriented(A.Position, B.Position, point)) {
-					m_Triangles[abcId] = Triangle{edgeId, bcId, acId};
-					edge.TriangleLeft = abcId;
-					BC.TriangleLeft = abcId;
-					AC.TriangleRight = abcId;
-				} else {
-					m_Triangles[abcId] = Triangle{edgeId, acId, bcId};
-					edge.TriangleRight = abcId;
-					BC.TriangleRight = abcId;
-					AC.TriangleLeft = abcId;
+				for (uint32_t i = 1; i < pointOrdered.size(); ++i) {
+					m_Edges.insert({GenerateEdgeId(), {pointOrdered[i-1].second, pointOrdered[i].second}});
 				}
-				m_Edges[acId] = AC;
-				m_Edges[bcId] = BC;
-			}
 
-			if (prev && next) {
-				uint32_t edgeId = vertexPairToEdge[{prev.value(), next.value()}];
-				m_Edges.erase(m_Edges.find(edgeId));
-			}
-			if (prev) {
-				uint32_t edge1Id = GenerateEdgeId();
-				Edge edge1 = {prev.value(), newVertId};
-				m_Edges[edge1Id] = edge1;
-			}
-			if (next) {
-				uint32_t edge2Id = GenerateEdgeId();
-				Edge edge2 = {newVertId, next.value()};
-				m_Edges[edge2Id] = edge2;
-			}
-		} else if (m_Vertices.size() == 2) {
-			uint32_t otherId = -1;
-			for (const auto &[id,vert]: m_Vertices) {
-				if (id != newVertId) {
-					otherId = id;
-					break;
+				for (auto& [abId, AB]: m_Edges) {
+					if (AB.VertexA == newVertId || AB.VertexB == newVertId) continue;
+					auto aId = AB.VertexA;
+					auto a = m_Vertices.at(aId);
+					auto bId = AB.VertexB;
+					auto b = m_Vertices.at(bId);
+
+					uint32_t bcId;
+					if(VertexPairToEdge.contains({bId, newVertId})) {
+						bcId = VertexPairToEdge.at({bId, newVertId});
+					} else {
+						bcId = GenerateEdgeId();
+						m_Edges[bcId] = {bId, newVertId};
+						VertexPairToEdge[{bId, newVertId}] = bcId;
+
+					}
+
+					uint32_t acId;
+					if(VertexPairToEdge.contains({aId, newVertId})) {
+						acId = VertexPairToEdge.at({aId, newVertId});
+					} else {
+						acId = GenerateEdgeId();
+						m_Edges[acId] = {aId, newVertId};
+						VertexPairToEdge[{aId, newVertId}] = acId;
+					}
+
+					auto& BC = m_Edges[bcId];
+					auto& AC = m_Edges[acId];
+
+
+					if (Math::IsTriangleOriented(a.Position, b.Position, point)) {
+						const uint32_t trId = GenerateTriangleId();
+						m_Triangles[trId] = {abId, bcId, acId};
+						AB.TriangleLeft = trId;
+						BC.TriangleLeft = trId;
+						AC.TriangleRight = trId;
+					} else {
+						const uint32_t trId = GenerateTriangleId();
+						m_Triangles[trId] = {abId, acId, bcId};
+						AB.TriangleRight = trId;
+						BC.TriangleRight = trId;
+						AC.TriangleLeft = trId;
+					}
 				}
-			}
-			if (otherId == -1) return; // Too much safety but is okay.
-			const uint32_t newEdge = GenerateEdgeId();
-			if (m_Vertices.at(otherId).Position.x == point.x) {
-				if (m_Vertices.at(otherId).Position.y < point.y)
-					m_Edges[newEdge] = {otherId, newVertId};
-				else
-					m_Edges[newEdge] = {newVertId, otherId};
-			} else if (m_Vertices.at(otherId).Position.x < point.x) {
-				m_Edges[newEdge] = {otherId, newVertId};
-			} else {
-				m_Edges[newEdge] = {newVertId, otherId};
 			}
 		}
 	}
