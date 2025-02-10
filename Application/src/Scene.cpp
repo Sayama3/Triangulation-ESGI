@@ -6,6 +6,7 @@
 #include "ImGuiLib.hpp"
 
 #include <imgui.h>
+#include <iostream>
 #include <rcamera.h>
 #include <rlImGui.h>
 #include <rlgl.h>
@@ -44,6 +45,8 @@ namespace TRG::Application {
 
 	void Scene::Update(const float ts) {
 
+		const std::optional<Vec3> mouseOnGround = Math::RaycastToPoint(Plane{Vec3{0,0,0},Vec3{0,1,0}}, GetMouseToWorldRay());
+
 		if (m_Action == Action::None) {
 			if (IsMouseButtonPressed(m_EnterFpsKey)) {
 				m_Action = Action::FreeCam;
@@ -73,7 +76,24 @@ namespace TRG::Application {
 			if (const auto vec2 = EndAddPoint(ts)) {
 				m_MeshGraphs.push_back(GetCopyMeshGraph());
 				if (m_UseDelaunayCoreAddPoint) {
-					GetMeshGraph().AddDelaunayPoint(vec2.value());
+					if (m_ShouldAddPoint){
+						try {
+							GetMeshGraph().AddDelaunayPoint(vec2.value());
+						} catch (const std::exception& e) {
+							std::cerr << e.what() << std::endl;
+							m_MeshGraphs.pop_back();
+						}
+					} else {
+						std::optional<uint32_t> closest = GetMeshGraph().GetClosestPoint(vec2.value());
+						if(closest) {
+							try {
+								GetMeshGraph().RemoveDelaunayPoint(closest.value());
+							} catch (const std::exception& e) {
+								std::cerr << e.what() << std::endl;
+								m_MeshGraphs.pop_back();
+							}
+						}
+					}
 				} else {
 					GetMeshGraph().AddPoint(vec2.value());
 					if (m_ShouldOptimizeOnAddPoint) {
@@ -355,11 +375,18 @@ namespace TRG::Application {
 				m_MeshGraphs.push_back(copy);
 			}
 
+			ImGui::BeginDisabled(!m_UseDelaunayCoreAddPoint);
+			{
+				ImGui::Checkbox("Add Point On Click", &m_ShouldAddPoint);
+			}
+			ImGui::EndDisabled();
+
 			ImGui::BeginDisabled(m_UseDelaunayCoreAddPoint);
 			{
 				ImGui::Checkbox("Edge Flip on Point Add", &m_ShouldOptimizeOnAddPoint);
 			}
 			ImGui::EndDisabled();
+
 			if (ImGui::Button("Delaunay Edge Flipping")) {
 				m_MeshGraphs.push_back(GetCopyMeshGraph());
 				GetMeshGraph().DelaunayTriangulation();

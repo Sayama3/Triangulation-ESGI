@@ -82,11 +82,12 @@ namespace TRG::Math {
 
 	public:
 		void AddPoint(Vector2 point);
-
 		void AddDelaunayPoint(Vector2 point);
-
 		void DelaunayTriangulation();
-
+		void RemoveDelaunayPoint(Vector2 point);
+		void RemoveDelaunayPoint(uint32_t pointId);
+	public:
+		std::optional<uint32_t> GetClosestPoint(Vector2 point);
 	public:
 		void clear();
 
@@ -523,14 +524,288 @@ namespace TRG::Math {
 		}
 	}
 
+	inline void MeshGraph::RemoveDelaunayPoint(const Vector2 point) {
+		const auto it = std::find_if(m_Vertices.cbegin(), m_Vertices.cend(), [point](const std::pair<uint32_t, Vertex>& vertices) {
+			return vertices.second.Position == point;
+		});
+		if (it != m_Vertices.end()) {
+			RemoveDelaunayPoint(it->first);
+		}
+	}
+
+	inline void MeshGraph::RemoveDelaunayPoint(const uint32_t pointId) {
+		if (!m_Vertices.contains(pointId)) return;
+		if (m_Triangles.empty()) {
+			assert(m_Edges.empty());
+			m_Vertices.erase(m_Vertices.find(pointId));
+		} else {
+			std::set<uint32_t> edgeList2;
+			std::unordered_map<uint32_t, std::unordered_set<uint32_t>> vertexToEdgeMap;
+
+			{
+				std::set<uint32_t> edgeList1;
+				std::set<uint32_t> triangleList;
+
+				for (const auto& [edgeId, edge] : m_Edges) {
+					if (edge.VertexA != pointId && edge.VertexB != pointId) {
+						continue;
+					}
+
+					edgeList1.insert(edgeId);
+					if (edge.TriangleLeft) triangleList.insert(edge.TriangleLeft.value());
+					if (edge.TriangleRight) triangleList.insert(edge.TriangleRight.value());
+				}
+
+				for (const auto triangleId : triangleList) {
+					const auto& triangle = m_Triangles.at(triangleId);
+
+					if(!edgeList1.contains(triangle.EdgeAB)) {
+						Edge& AB = m_Edges.at(triangle.EdgeAB);
+						if (AB.TriangleLeft && triangleList.contains(AB.TriangleLeft.value())) AB.TriangleLeft = std::nullopt;
+						if (AB.TriangleRight && triangleList.contains(AB.TriangleRight.value())) AB.TriangleRight = std::nullopt;
+						vertexToEdgeMap[AB.VertexA].insert(triangle.EdgeAB);
+						vertexToEdgeMap[AB.VertexB].insert(triangle.EdgeAB);
+						edgeList2.insert(triangle.EdgeAB);
+					}
+					if(!edgeList1.contains(triangle.EdgeBC)) {
+						Edge& BC = m_Edges.at(triangle.EdgeBC);
+						if (BC.TriangleLeft && triangleList.contains(BC.TriangleLeft.value())) BC.TriangleLeft = std::nullopt;
+						if (BC.TriangleRight && triangleList.contains(BC.TriangleRight.value())) BC.TriangleRight = std::nullopt;
+						vertexToEdgeMap[BC.VertexA].insert(triangle.EdgeBC);
+						vertexToEdgeMap[BC.VertexB].insert(triangle.EdgeBC);
+						edgeList2.insert(triangle.EdgeBC);
+					}
+					if(!edgeList1.contains(triangle.EdgeCA)) {
+						Edge& CA = m_Edges.at(triangle.EdgeCA);
+						if (CA.TriangleLeft && triangleList.contains(CA.TriangleLeft.value())) CA.TriangleLeft = std::nullopt;
+						if (CA.TriangleRight && triangleList.contains(CA.TriangleRight.value())) CA.TriangleRight = std::nullopt;
+						vertexToEdgeMap[CA.VertexA].insert(triangle.EdgeCA);
+						vertexToEdgeMap[CA.VertexB].insert(triangle.EdgeCA);
+						edgeList2.insert(triangle.EdgeCA);
+					}
+				}
+
+				m_Vertices.erase(m_Vertices.find(pointId));
+				for (const auto edgeId : edgeList1) {
+					const auto it = m_Edges.find(edgeId);
+					if (it != m_Edges.end()) m_Edges.erase(it);
+				}
+
+				for (const auto triangleId : triangleList) {
+					const auto it = m_Triangles.find(triangleId);
+					if (it != m_Triangles.end()) m_Triangles.erase(it);
+				}
+			}
+
+			const bool polygonIsClosed = std::all_of(vertexToEdgeMap.begin(), vertexToEdgeMap.end(), [](const std::pair<uint32_t, std::unordered_set<uint32_t>>& vToEdge){return vToEdge.second.size() == 2;});
+
+			if (!polygonIsClosed) {
+				throw std::runtime_error("Case where the polygon is not closed is not handled");
+			}
+
+			while (edgeList2.size() > 3) {
+				for (const uint32_t edgeId : edgeList2) {
+					Edge& edge = m_Edges.at(edgeId);
+					const uint32_t aId = edge.VertexA;
+					const uint32_t bId = edge.VertexB;
+					const Vertex& A = m_Vertices.at(edge.VertexA);
+					const Vertex& B = m_Vertices.at(edge.VertexB);
+					const std::array<uint32_t, 2> edgeVerticeIds{aId, bId};
+
+					bool hasAddedTriangle = false;
+
+					for (const auto verticeId : edgeVerticeIds) {
+						if(vertexToEdgeMap.contains(verticeId)) {
+							const auto& vertList = vertexToEdgeMap.at(verticeId);
+							const std::unordered_set<uint32_t>::const_iterator it = std::find_if(vertList.begin(), vertList.end(), [edgeId](const uint32_t id){return id!=edgeId;});
+							if (it == vertList.end()) continue;
+
+							const uint32_t nextEdgeId = *it;
+							Edge& nextEdge = m_Edges.at(nextEdgeId);
+
+							const uint32_t cId = nextEdge.VertexA == edge.VertexA || nextEdge.VertexA == edge.VertexB ? nextEdge.VertexB : nextEdge.VertexA;
+							const Vertex& C = m_Vertices.at(cId);
+
+							const Circle ABC = Math::GetCircle(A.Position, B.Position, C.Position);
+
+							const bool invalidTriangle = std::any_of(vertexToEdgeMap.begin(), vertexToEdgeMap.end(), [this, &ABC,aId,bId,cId](const std::pair<uint32_t, std::unordered_set<uint32_t>>& vertEdgesPair) {
+								const uint32_t pId = vertEdgesPair.first;
+								if (pId == aId) return false;
+								if (pId == bId) return false;
+								if (pId == cId) return false;
+
+								const Vertex& p = m_Vertices.at(vertEdgesPair.first);
+								return Math::IsPointInsideCircle(ABC, p.Position);
+							});
+
+							if (!invalidTriangle) {
+								const bool isOriented = Math::IsTriangleOriented(A.Position,B.Position,C.Position);
+								const bool isAttachedThroughA = aId == nextEdge.VertexA || aId == nextEdge.VertexB;
+
+								const uint32_t newEdgeId = GenerateEdgeId();
+								Edge newEdge = isAttachedThroughA ? Edge{bId, cId} : Edge{aId, cId};
+
+								const uint32_t newTriangleId = GenerateTriangleId();
+								Triangle newTriangle;
+								if (isOriented) {
+									edge.TriangleLeft = newTriangleId;
+									if (isAttachedThroughA) {
+										newEdge.TriangleLeft = newTriangleId; // BC
+										newTriangle = {edgeId, newEdgeId, nextEdgeId}; //AB - BC - AC
+									} else {
+										newEdge.TriangleRight = newTriangleId; // AC;
+										newTriangle = {edgeId, nextEdgeId, newEdgeId}; //AB - BC - AC
+									}
+								} else {
+									edge.TriangleRight = newTriangleId;
+									if (isAttachedThroughA) {
+										newEdge.TriangleRight = newTriangleId; // BC
+										newTriangle = {edgeId, nextEdgeId, newEdgeId}; //AB - AC - BC
+									} else {
+										newEdge.TriangleLeft = newTriangleId; // AC
+										newTriangle = {edgeId, newEdgeId, nextEdgeId}; //AB - AC - BC
+									}
+								}
+
+								{
+									const auto nAId = nextEdge.VertexA;
+									const auto nBId = nextEdge.VertexB;
+									const auto nCId = edge.VertexA == nAId || edge.VertexA == nBId ? edge.VertexB : edge.VertexA;
+
+									if (Math::IsTriangleOriented(m_Vertices.at(nAId).Position,m_Vertices.at(nBId).Position,m_Vertices.at(nCId).Position)) {
+										nextEdge.TriangleLeft = newTriangleId;
+									} else {
+										nextEdge.TriangleRight = newTriangleId;
+									}
+								}
+
+								m_Triangles[newTriangleId] = newTriangle;
+								m_Edges[newEdgeId] = newEdge;
+
+								edgeList2.erase(edgeList2.find(edgeId));
+								edgeList2.erase(edgeList2.find(nextEdgeId));
+								edgeList2.insert(newEdgeId);
+
+								if (isAttachedThroughA) {
+									vertexToEdgeMap.erase(vertexToEdgeMap.find(aId));
+									auto& lstB = vertexToEdgeMap.at(bId);
+									auto& lstC = vertexToEdgeMap.at(cId);
+									lstB.erase(lstB.find(edgeId));
+									lstC.erase(lstC.find(nextEdgeId));
+									lstB.insert(newEdgeId);
+									lstC.insert(newEdgeId);
+								} else {
+									vertexToEdgeMap.erase(vertexToEdgeMap.find(bId));
+									auto& lstA = vertexToEdgeMap.at(aId);
+									auto& lstC = vertexToEdgeMap.at(cId);
+									lstA.erase(lstA.find(edgeId));
+									lstC.erase(lstC.find(nextEdgeId));
+									lstA.insert(newEdgeId);
+									lstC.insert(newEdgeId);
+								}
+
+								hasAddedTriangle = true;
+								break;
+							}
+						}
+					}
+
+					if (hasAddedTriangle) {
+						break;
+					}
+				}
+			}
+
+			assert(edgeList2.size() == 3);
+			auto it = edgeList2.cbegin();
+			const uint32_t edge1Id = *(it++);
+			const uint32_t edge2Id =  *(it++);
+			const uint32_t edge3Id =  *(it++);
+
+			Edge& edge1 = m_Edges.at(edge1Id);
+			Edge& edge2 = m_Edges.at(edge2Id);
+			Edge& edge3 = m_Edges.at(edge3Id);
+
+			bool edge2IsLinkToEdge1ThroughA = edge1.VertexA == edge2.VertexA || edge1.VertexA == edge2.VertexB;
+			const uint32_t aId = edge1.VertexA;
+			const uint32_t bId = edge1.VertexB;
+
+			const uint32_t triangleId = GenerateTriangleId();
+			Triangle triangle;// = ABCIsOriented ? Triangle{edge1Id, edge2Id, edge3Id} : Triangle{edge1Id, edge3Id, edge2Id};
+
+			{
+				const bool edge2ConnectedToEdge1ThroughB = edge1.VertexB == edge2.VertexA || edge1.VertexB == edge2.VertexB;
+				const uint32_t cId = edge2.VertexA == edge1.VertexA || edge2.VertexA == edge1.VertexB ? edge2.VertexB : edge2.VertexA;
+				const bool ABCOriented = Math::IsTriangleOriented(m_Vertices.at(edge1.VertexA).Position,m_Vertices.at(edge1.VertexB).Position,m_Vertices.at(cId).Position);
+
+				if (ABCOriented) {
+					if (edge2ConnectedToEdge1ThroughB) {
+						triangle = Triangle{edge1Id, edge2Id, edge3Id};
+					} else {
+						triangle = Triangle{edge1Id, edge3Id, edge2Id};
+					}
+				} else {
+					if (edge2ConnectedToEdge1ThroughB) {
+						triangle = Triangle{edge1Id, edge3Id, edge2Id};
+					} else {
+						triangle = Triangle{edge1Id, edge2Id, edge3Id};
+					}
+				}
+
+				if (ABCOriented) {
+					edge1.TriangleLeft = triangleId;
+				} else {
+					edge1.TriangleRight = triangleId;
+				}
+			}
+
+			{
+				const uint32_t cId = edge3.VertexA == edge2.VertexA || edge3.VertexA == edge2.VertexB ? edge3.VertexB : edge3.VertexA;
+				const bool ABCOriented = Math::IsTriangleOriented(m_Vertices.at(edge2.VertexA).Position,m_Vertices.at(edge2.VertexB).Position,m_Vertices.at(cId).Position);
+
+				if (ABCOriented) {
+					edge2.TriangleLeft = triangleId;
+				} else {
+					edge2.TriangleRight = triangleId;
+				}
+			}
+
+			{
+				const uint32_t cId = edge1.VertexA == edge3.VertexA || edge1.VertexA == edge3.VertexB ? edge1.VertexB : edge1.VertexA;
+				const bool ABCOriented = Math::IsTriangleOriented(m_Vertices.at(edge3.VertexA).Position,m_Vertices.at(edge3.VertexB).Position,m_Vertices.at(cId).Position);
+
+				if (ABCOriented) {
+					edge3.TriangleLeft = triangleId;
+				} else {
+					edge3.TriangleRight = triangleId;
+				}
+			}
+
+			m_Triangles[triangleId] = triangle;
+		}
+	}
+
+	inline std::optional<uint32_t> MeshGraph::GetClosestPoint(const Vector2 point) {
+		std::optional<uint32_t> result{std::nullopt};
+		T distance = std::numeric_limits<T>::max();
+		for (const auto& [vertId, vert] : m_Vertices) {
+			const auto dist = Math::Distance(point, vert.Position);
+			if (Math::Distance(point, vert.Position) < distance) {
+				result = vertId;
+				distance = dist;
+			}
+		}
+		return result;
+	}
+
 	inline std::tuple<bool, uint32_t, uint32_t, uint32_t, uint32_t> MeshGraph::RespectDelaunay(const uint32_t edgeId) {
 		const auto &edge = m_Edges.at(edgeId);
 		if (!edge.TriangleLeft || !edge.TriangleRight) return {true, -1, -1, -1, -1};
 
 		const uint32_t s1Id = edge.VertexB;
 		const uint32_t s2Id = edge.VertexA;
-		const Vertex &s1 = m_Vertices.at(s1Id);
-		const Vertex &s2 = m_Vertices.at(s2Id);
+		const Vertex& s1 = m_Vertices.at(s1Id);
+		const Vertex& s2 = m_Vertices.at(s2Id);
 
 		const uint32_t t1Id = edge.TriangleLeft.value();
 		const Triangle &t1 = m_Triangles.at(t1Id);
