@@ -95,7 +95,7 @@ namespace TRG {
 		using Vector = glm::vec<2,T,Q>;
 		Circle() = default;
 		~Circle() = default;
-		Circle(const glm::vec<2,T,Q>& center, T radius) : Center{center}, Radius{radius} {}
+		Circle(const glm::vec<2,T,Q>& center, T radius) : Center{center}, Radius{std::abs(radius)} {}
 
 		glm::vec<2,T,Q> Center;
 		T Radius;
@@ -106,7 +106,7 @@ namespace TRG {
 		using Vector = glm::vec<3,T,Q>;
 		Sphere() = default;
 		~Sphere() = default;
-		Sphere(const glm::vec<3,T,Q>& center, T radius) : Center{center}, Radius{radius} {}
+		Sphere(const glm::vec<3,T,Q>& center, T radius) : Center{center}, Radius{std::abs(radius)} {}
 
 		glm::vec<3,T,Q> Center;
 		T Radius;

@@ -153,7 +153,7 @@ namespace TRG::Math {
 		const glm::vec<3,T,Q> cross_abbc = Math::Cross(a - b, b - c);
 		const T divider = static_cast<T>(2) * Math::Magnitude(cross_abbc);
 		const T radius = (Math::Magnitude(a - b) * Math::Magnitude(b - c) * Math::Magnitude(c - a)) / divider;
-		return radius;
+		return std::abs(radius);
 	}
 
 	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
@@ -169,7 +169,7 @@ namespace TRG::Math {
 		const T gamma = (Math::Magnitude2(a - b) * Math::Dot(c - a, c - b)) / divider_ct;
 
 		const T radius = (Math::Magnitude(a-b) * Math::Magnitude(b-c) * Math::Magnitude(c-a)) / divider_rad;
-		return Sphere{a * alpha + b * beta + c * gamma, radius};
+		return Sphere{a * alpha + b * beta + c * gamma, std::abs(radius)};
 	}
 
 	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
@@ -195,7 +195,7 @@ namespace TRG::Math {
 		const T divider_rad = static_cast<T>(2) * mag_cross_abbc;
 
 		const T radius = (Math::Magnitude(a-b) * Math::Magnitude(b-c) * Math::Magnitude(c-a)) / divider_rad;
-		return radius;
+		return std::abs(radius);
 	}
 
 	template<typename T, glm::qualifier Q = glm::qualifier::defaultp>
@@ -212,7 +212,7 @@ namespace TRG::Math {
 		const T gamma = (Math::Magnitude2(ba) * Math::Dot(c - a, c - b)) / divider_ct;
 
 		const T radius = (Math::Magnitude(ba) * Math::Magnitude(cb) * Math::Magnitude(ca)) / divider_rad;
-		return Circle{a * alpha + b * beta + c * gamma, radius};
+		return Circle{a * alpha + b * beta + c * gamma, std::abs(radius)};
 	}
 
 }
