@@ -158,6 +158,18 @@ namespace TRG::Application {
 			DrawLine3D(Vector3(vertA.Position.x, 0.001, vertA.Position.y), Vector3(vertB.Position.x, 0.001, vertB.Position.y), { 75, 90, 20, 255});
 		}
 
+		if (m_UseDelaunayCoreAddPoint && !GetMeshGraph().m_Triangles.empty()) {
+			const auto [points, lines] = GetMeshGraph().GetVoronoi();
+			for (const auto& [pointId, point]: points) {
+				DrawSphere(Vector3(point.x, 0.1, point.y), 0.05, { 0,0,255, 128});
+			}
+			for (const auto [pointId1, pointId2] : lines) {
+				const auto point1 = points.at(pointId1);
+				const auto point2 = points.at(pointId2);
+				DrawLine3D(Vector3(point1.x, 0.1, point1.y), Vector3(point2.x, 0.1, point2.y), { 0,0,255, 255});
+			}
+		}
+
 		constexpr auto jarvisColor = Color{ 50, 40, 180, 255};
 		for (uint64_t i = 0; i < m_JarvisShell.size(); ++i) {
 			const auto& current = m_JarvisShell[i];

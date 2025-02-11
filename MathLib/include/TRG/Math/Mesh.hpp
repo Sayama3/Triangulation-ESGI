@@ -12,9 +12,7 @@ namespace TRG::Math {
 	struct ReversiblePair {
 	public:
 		ReversiblePair() = default;
-
 		~ReversiblePair() = default;
-
 		ReversiblePair(const T &f, const U &s) : first(f), second(s) {
 		}
 
@@ -87,6 +85,8 @@ namespace TRG::Math {
 		void RemoveDelaunayPoint(Vector2 point);
 		void RemoveDelaunayPoint(uint32_t pointId);
 	public:
+		std::pair<std::unordered_map<uint32_t, MeshGraph::Vector2>, std::unordered_set<ReversiblePair<uint32_t, uint32_t>, ReversiblePairHash>> GetVoronoi();
+	public:
 		std::optional<uint32_t> GetClosestPoint(Vector2 point);
 	public:
 		void clear();
@@ -113,6 +113,88 @@ namespace TRG::Math {
 		uint32_t m_EdgeIdGenerator{0};
 		uint32_t m_TriangleIdGenerator{0};
 	};
+
+	inline std::pair<std::unordered_map<uint32_t, MeshGraph::Vector2>, std::unordered_set<ReversiblePair<uint32_t, uint32_t>, ReversiblePairHash>> MeshGraph::GetVoronoi() {
+		uint32_t localGenerator = m_TriangleIdGenerator;
+		std::unordered_map<uint32_t, uint32_t> exteriorsPoints;
+		std::unordered_map<uint32_t, Vector2> trianglePoints;
+		std::unordered_set<ReversiblePair<uint32_t, uint32_t>, ReversiblePairHash> lines;
+
+		for (const auto& [triangleId, triangle]: m_Triangles) {
+			const auto abId = triangle.EdgeAB;
+			const auto bcId = triangle.EdgeBC;
+			const auto caId = triangle.EdgeCA;
+
+			const auto& AB = m_Edges.at(abId);
+			const auto& BC = m_Edges.at(bcId);
+			const auto& CA = m_Edges.at(caId);
+
+			const auto aId = AB.VertexA;
+			const auto bId = AB.VertexB;
+			const auto cId = BC.VertexA == aId || BC.VertexA == bId ? BC.VertexB : BC.VertexA;
+
+			const auto& A = m_Vertices.at(aId);
+			const auto& B = m_Vertices.at(bId);
+			const auto& C = m_Vertices.at(cId);
+
+			const auto barycenter = (A.Position + B.Position + C.Position) * static_cast<T>(1.0f/3.0f);
+			const auto circle = Math::GetCircle(A.Position, B.Position, C.Position);
+			trianglePoints[triangleId] = circle.Center;
+			if (AB.TriangleLeft && AB.TriangleRight) {
+				lines.insert({AB.TriangleLeft.value(), AB.TriangleRight.value()});
+			} else {
+				assert(AB.TriangleLeft || AB.TriangleRight);
+				const uint32_t exteriorId = exteriorsPoints.contains(abId) ? exteriorsPoints.at(abId) : localGenerator++;
+				if(!exteriorsPoints.contains(abId)) {
+					exteriorsPoints[abId] = exteriorId;
+					const Vector2 middle = (m_Vertices.at(AB.VertexA).Position + m_Vertices.at(AB.VertexB).Position) * static_cast<T>(0.5);
+					const Vector2 middleToCircle = circle.Center - middle;
+					const Vector2 middleToBarycenter = barycenter - middle;
+					const bool mtcPointInside = Math::Dot(Math::Normalize(middleToBarycenter), Math::Normalize(middleToCircle)) >= 0;
+					const Vector2 exterior = circle.Center + (mtcPointInside ? -middleToCircle * static_cast<T>(2) : middleToCircle * static_cast<T>(2));
+					trianglePoints[exteriorId] = exterior;
+				}
+				const uint32_t otherTriangleId = AB.TriangleLeft ? AB.TriangleLeft.value() : AB.TriangleRight.value();
+				lines.insert({otherTriangleId, exteriorId});
+			}
+			if (BC.TriangleLeft && BC.TriangleRight) {
+				lines.insert({BC.TriangleLeft.value(), BC.TriangleRight.value()});
+			} else {
+				assert(BC.TriangleLeft || BC.TriangleRight);
+				const uint32_t exteriorId = exteriorsPoints.contains(bcId) ? exteriorsPoints.at(bcId) : localGenerator++;
+				if(!exteriorsPoints.contains(bcId)) {
+					exteriorsPoints[bcId] = exteriorId;
+					const Vector2 middle = (m_Vertices.at(BC.VertexA).Position + m_Vertices.at(BC.VertexB).Position) * static_cast<T>(0.5);
+					const Vector2 middleToCircle = circle.Center - middle;
+					const Vector2 middleToBarycenter = barycenter - middle;
+					const bool mtcPointInside = Math::Dot(Math::Normalize(middleToBarycenter), Math::Normalize(middleToCircle)) >= 0;
+					const Vector2 exterior = circle.Center + (mtcPointInside ? -middleToCircle * static_cast<T>(2) : middleToCircle * static_cast<T>(2));
+					trianglePoints[exteriorId] = exterior;
+				}
+				const uint32_t otherTriangleId = BC.TriangleLeft ? BC.TriangleLeft.value() : BC.TriangleRight.value();
+				lines.insert({otherTriangleId, exteriorId});
+			}
+			if (CA.TriangleLeft && CA.TriangleRight) {
+				lines.insert({CA.TriangleLeft.value(), CA.TriangleRight.value()});
+			} else {
+				assert(CA.TriangleLeft || CA.TriangleRight);
+				const uint32_t exteriorId = exteriorsPoints.contains(caId) ? exteriorsPoints.at(caId) : localGenerator++;
+				if(!exteriorsPoints.contains(caId)) {
+					exteriorsPoints[caId] = exteriorId;
+					const Vector2 middle = (m_Vertices.at(CA.VertexA).Position + m_Vertices.at(CA.VertexB).Position) * static_cast<T>(0.5);
+					const Vector2 middleToCircle = circle.Center - middle;
+					const Vector2 middleToBarycenter = barycenter - middle;
+					const bool mtcPointInside = Math::Dot(Math::Normalize(middleToBarycenter), Math::Normalize(middleToCircle)) >= 0;
+					const Vector2 exterior = circle.Center + (mtcPointInside ? -middleToCircle * static_cast<T>(2) : middleToCircle * static_cast<T>(2));
+					trianglePoints[exteriorId] = exterior;
+				}
+				const uint32_t otherTriangleId = CA.TriangleLeft ? CA.TriangleLeft.value() : CA.TriangleRight.value();
+				lines.insert({otherTriangleId, exteriorId});
+			}
+		}
+
+		return {trianglePoints, lines};
+	}
 
 	inline void MeshGraph::AddPoint(const Vector2 point) {
 		auto it = std::find_if(m_Vertices.begin(), m_Vertices.end(), [point](std::pair<uint32_t, Vertex> vert) {
